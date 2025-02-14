@@ -48,9 +48,13 @@ import os
 from loco_manipulation_gym.utils.task_registry import task_registry
 from loco_manipulation_gym.envs.airbot.airbot_robot import Airbot
 from loco_manipulation_gym.envs.b2w.b2w_robot import B2w
+from loco_manipulation_gym.envs.tita.tita_robot import Tita
+from loco_manipulation_gym.envs.tita_noarm.tita_noarm_robot import TitaNoArm
 
 from loco_manipulation_gym.envs.airbot.airbot_config import AirbotRoughCfg, AirbotRoughCfgPPO
 from loco_manipulation_gym.envs.b2w.b2w_config import B2wRoughCfg, B2wRoughCfgPPO
+from loco_manipulation_gym.envs.tita.tita_config import TitaRoughCfg, TitaRoughCfgPPO
+from loco_manipulation_gym.envs.tita_noarm.tita_noarm_config import TitaNoArmRoughCfg, TitaNoArmRoughCfgPPO
 
 
 task_registry.register( "go2_human", Go2HumanRobot, Go2HumanRoughCfg(), Go2HumanRoughCfgPPO())
@@ -63,3 +67,5 @@ task_registry.register( "b2w_z1", B2WZ1Robot, B2WZ1RoughCfg(), B2WZ1RoughCfgPPO(
 
 task_registry.register( "b2w", B2w, B2wRoughCfg(), B2wRoughCfgPPO() )
 task_registry.register( "airbot", Airbot, AirbotRoughCfg(), AirbotRoughCfgPPO() )
+task_registry.register( "tita", Tita, TitaRoughCfg(), TitaRoughCfgPPO() )
+task_registry.register( "tita_noarm", TitaNoArm, TitaNoArmRoughCfg(), TitaNoArmRoughCfgPPO() )
