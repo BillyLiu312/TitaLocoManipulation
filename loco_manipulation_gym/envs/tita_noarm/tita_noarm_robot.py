@@ -94,9 +94,13 @@ class TitaNoArm(LeggedRobot):
 
         # prepare quantities
         self.base_quat[:] = self.root_states[:, 3:7]
+        # add base position
+        self.base_position = self.root_states[:, :3]
         self.base_lin_vel[:] = quat_rotate_inverse(self.base_quat, self.root_states[:, 7:10])
         self.base_ang_vel[:] = quat_rotate_inverse(self.base_quat, self.root_states[:, 10:13])
         self.projected_gravity[:] = quat_rotate_inverse(self.base_quat, self.gravity_vec)
+        self._compute_feet_states()
+        
 
         self._post_physics_step_callback()
 
@@ -106,14 +110,25 @@ class TitaNoArm(LeggedRobot):
         env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
         self.reset_idx(env_ids)
         self.compute_observations() # in some cases a simulation step might be required to refresh some obs (for example body positions)
+        
 
         self.last_actions[:] = self.actions[:]
         self.last_dof_vel[:] = self.dof_vel[:]
         self.last_dof_pos[:] = self.dof_pos[:]
         self.last_root_vel[:] = self.root_states[:, 7:13]
+        # add foot position and base position
+        self.last_foot_positions[:] = self.foot_positions[:]
+        self.last_base_position[:] = self.base_position[:]
 
         # if self.viewer :
         #     self._draw_debug_vis()
+
+    def _check_if_include_feet_height_rewards(self):
+        members = [attr for attr in dir(self.cfg.rewards.scales) if not attr.startswith("__")]
+        for scale in members:
+            if "feet_height" in scale:
+                return True
+        return False
 
     def reset(self):
         """ Reset all robots"""
@@ -159,6 +174,9 @@ class TitaNoArm(LeggedRobot):
         self.feet_air_time[env_ids] = 0.
         self.episode_length_buf[env_ids] = 0
         self.reset_buf[env_ids] = 1
+        # add foot positions and base position
+        self.last_foot_positions[env_ids] = self.foot_positions[env_ids]
+        self.last_base_position[env_ids] = self.base_position[env_ids]
         # fill extras
         self.extras["episode"] = {}
         for key in self.episode_sums.keys():
@@ -473,6 +491,7 @@ class TitaNoArm(LeggedRobot):
             [torch.Tensor]: Vector of scales used to multiply a uniform distribution in [-1, 1]
         """
         noise_vec = torch.zeros_like(self.obs_buf[0])
+        print(self.obs_buf[0])
         self.add_noise = self.cfg.noise.add_noise
         noise_scales = self.cfg.noise.noise_scales
         noise_level = self.cfg.noise.noise_level
@@ -497,6 +516,7 @@ class TitaNoArm(LeggedRobot):
         actor_root_state = self.gym.acquire_actor_root_state_tensor(self.sim)
         dof_state_tensor = self.gym.acquire_dof_state_tensor(self.sim)
         net_contact_forces = self.gym.acquire_net_contact_force_tensor(self.sim)
+        rigid_body_state = self.gym.acquire_rigid_body_state_tensor(self.sim)
 
         self.gym.refresh_dof_state_tensor(self.sim)
         self.gym.refresh_actor_root_state_tensor(self.sim)
@@ -508,6 +528,20 @@ class TitaNoArm(LeggedRobot):
         self.dof_pos = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 0]
         self.dof_vel = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 1]
         self.base_quat = self.root_states[:, 3:7]
+        self.rigid_body_states = gymtorch.wrap_tensor(rigid_body_state).view(
+            self.num_envs, self.num_bodies, -1
+        )
+        self.feet_state = self.rigid_body_states[:, self.feet_indices, :]
+        self.base_position = self.root_states[:, :3]
+        self.last_base_position = torch.zeros_like(self.base_position)
+        self.foot_positions = self.rigid_body_states.view(
+            self.num_envs, self.num_bodies, 13
+        )[:, self.feet_indices, 0:3]
+        self.last_foot_positions = torch.zeros_like(self.foot_positions)
+        self.foot_heights = torch.zeros_like(self.foot_positions)
+        self.foot_velocities = torch.zeros_like(self.foot_positions)
+        self.foot_velocities_f = torch.zeros_like(self.foot_positions)
+        self.foot_relative_velocities = torch.zeros_like(self.foot_velocities)
 
         self.contact_forces = gymtorch.wrap_tensor(net_contact_forces).view(self.num_envs, -1, 3) # shape: num_envs, num_bodies, xyz axis
 
@@ -528,7 +562,15 @@ class TitaNoArm(LeggedRobot):
         self.commands = torch.zeros(self.num_envs, self.cfg.commands.num_commands, dtype=torch.float, device=self.device, requires_grad=False) # x vel, y vel, yaw vel, heading
         self.commands_scale = torch.tensor([self.obs_scales.lin_vel, self.obs_scales.lin_vel, self.obs_scales.ang_vel], device=self.device, requires_grad=False,) # TODO change this
         self.feet_air_time = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, device=self.device, requires_grad=False)
+        self.last_feet_air_time = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, device=self.device, requires_grad=False)
+        self.contact_filt = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.bool, device=self.device, requires_grad=False)
+        self.first_contact = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.bool, device=self.device, requires_grad=False)
         self.last_contacts = torch.zeros(self.num_envs, len(self.feet_indices), dtype=torch.bool, device=self.device, requires_grad=False)
+        self.feet_height = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, device=self.device, requires_grad=False)
+        self.last_max_feet_height = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, device=self.device, requires_grad=False)
+        self.current_max_feet_height = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, device=self.device, requires_grad=False)
+        self.rigid_body_external_forces = torch.zeros((self.num_envs, self.num_bodies, 3), device=self.device, requires_grad=False)
+        self.rigid_body_external_torques = torch.zeros((self.num_envs, self.num_bodies, 3), device=self.device, requires_grad=False)
         self.base_lin_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 7:10])
         self.base_ang_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 10:13])
         self.projected_gravity = quat_rotate_inverse(self.base_quat, self.gravity_vec)
@@ -540,6 +582,8 @@ class TitaNoArm(LeggedRobot):
         self.theta_right = torch.zeros(self.num_envs, 1, dtype=torch.float, device=self.device, requires_grad=False)
         self.theta_hip_left = torch.zeros(self.num_envs, 1, dtype=torch.float, device=self.device, requires_grad=False)
         self.theta_hip_right = torch.zeros(self.num_envs, 1, dtype=torch.float, device=self.device, requires_grad=False)
+
+        self._include_feet_height_rewards = self._check_if_include_feet_height_rewards()
 
 
         if self.cfg.terrain.measure_heights:
@@ -918,6 +962,28 @@ class TitaNoArm(LeggedRobot):
 
             sphere_pose_3 = gymapi.Transform(gymapi.Vec3(upper_arm_pose[i, 0], upper_arm_pose[i, 1], upper_arm_pose[i, 2]), r=None)
             gymutil.draw_lines(sphere_geom_3, self.gym, self.viewer, self.envs[i], sphere_pose_3) 
+    
+    def _compute_feet_states(self):
+        # add foot positions
+        self.foot_positions = self.rigid_body_states.view(self.num_envs, self.num_bodies, 13)[:, self.feet_indices, 0:3]
+        # add foot velocities
+        self.foot_velocities = (self.foot_positions - self.last_foot_positions) / self.dt
+        self.feet_state = self.rigid_body_states[:, self.feet_indices, :]
+        self.last_feet_air_time = self.feet_air_time * self.first_contact + self.last_feet_air_time * ~self.first_contact
+        self.feet_air_time *= ~self.contact_filt
+        if self._include_feet_height_rewards:
+            self.last_max_feet_height = self.current_max_feet_height * self.first_contact + self.last_max_feet_height * ~self.first_contact
+            self.current_max_feet_height *= ~self.contact_filt
+            self.feet_height = self.feet_state[:, :, 2] - self._get_heights_below_foot()
+            self.current_max_feet_height = torch.max(self.current_max_feet_height,
+                                                     self.feet_height)
+        contact = self.contact_forces[:, self.feet_indices, 2] > 1.
+        # Need to filter the contacts because the contact reporting of PhysX is unreliable on meshes
+        self.contact_filt = torch.logical_or(contact, self.last_contacts)
+        self.last_contacts = contact
+        self.first_contact = (self.feet_air_time > 0.) * self.contact_filt
+        self.feet_air_time += self.dt
+
 
 
 
@@ -1110,3 +1176,34 @@ class TitaNoArm(LeggedRobot):
         #     + 1.0*(torch.sum(1.0 * contacts_z, dim=1) == 1)*output)
         rew = 1.0*(torch.sum(1.0 * contacts_z, dim=1) > 0)
         return rew
+
+    def _reward_feet_distance(self):
+        feet_distance = torch.abs(torch.norm(self.feet_state[:, 0, :2] - self.feet_state[:, 1, :2], dim=-1))
+        # reward = torch.abs(feet_distance - self.cfg.rewards.min_feet_distance)
+        reward = torch.clip(self.cfg.rewards.min_feet_distance - feet_distance, 0, 1) + \
+                 torch.clip(feet_distance - self.cfg.rewards.max_feet_distance, 0, 1)
+        return reward
+
+    def _reward_survival(self):
+        # return (~self.reset_buf).float() * self.dt
+        return (self.episode_length_buf * self.dt) > 10
+
+    def _reward_wheel_adjustment(self):
+        # 鼓励使用轮子的滑动克服前后的倾斜，奖励轮速和倾斜方向一致的情况，并要求轮速方向也一致
+        incline_x = self.projected_gravity[:, 0]
+        # mean velocity
+        wheel_x_mean = (self.foot_velocities[:, 0, 0] + self.foot_velocities[:, 1, 0]) / 2
+        # 两边轮速不一致的情况，不给奖励
+        wheel_x_invalid = (self.foot_velocities[:, 0, 0] * self.foot_velocities[:, 1, 0]) < 0
+        wheel_x_mean[wheel_x_invalid] = 0.0
+        wheel_x_mean = wheel_x_mean.reshape(-1)
+        reward = incline_x * wheel_x_mean > 0
+        return reward
+
+    def _reward_leg_symmetry(self):
+        foot_positions_base = self.foot_positions - \
+                            (self.base_position).unsqueeze(1).repeat(1, len(self.feet_indices), 1)
+        for i in range(len(self.feet_indices)):
+            foot_positions_base[:, i, :] = quat_rotate_inverse(self.base_quat, foot_positions_base[:, i, :] )
+        leg_symmetry_err = (abs(foot_positions_base[:,0,1])-abs(foot_positions_base[:,1,1]))
+        return torch.exp(-(leg_symmetry_err ** 2)/ self.cfg.rewards.leg_symmetry_tracking_sigma)

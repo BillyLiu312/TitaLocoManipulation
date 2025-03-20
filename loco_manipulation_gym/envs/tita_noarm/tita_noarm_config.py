@@ -7,6 +7,7 @@ class TitaNoArmRoughCfg( LeggedRobotCfg ):
     class env(LeggedRobotCfg.env):
         num_envs = 4096
         num_observations = 30
+        num_propriceptive_obs = num_observations
         symmetric = False  #true :  set num_privileged_obs = None;    false: num_privileged_obs = observations + 187 ,set "terrain.measure_heights" to true
         num_privileged_obs = num_observations + 187 # if not None a priviledge_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise 
         num_actions = 6
@@ -54,48 +55,60 @@ class TitaNoArmRoughCfg( LeggedRobotCfg ):
         slope_treshold = 0.75 # slopes above this threshold will be corrected to vertical surfaces
 
     class init_state( LeggedRobotCfg.init_state ):
-        pos = [0.0, 0.0, 0.35] # x,y,z [m]
+        pos = [0.0, 0.0, 0.3] # x,y,z [m]
         default_joint_angles = { # = target angles [rad] when action = 0.0
             'right_ankle': 0.,   # [rad]
-            'right_knee': -1.,   # [rad]
-            'right_hip': 1. ,  # [rad]
+            'right_knee': -1.5,   # [rad]
+            'right_hip': 0.8,  # [rad]
 
             'left_ankle': 0.,   # [rad]
-            'left_knee': -1.,   # [rad]
-            'left_hip': 1. ,  # [rad]
+            'left_knee': -1.5,   # [rad]
+            'left_hip': 0.8,  # [rad]
 
         }
     class rewards( LeggedRobotCfg.rewards ):
         class scales( LeggedRobotCfg.rewards.scales ):
             termination = -0.0
             end = 0
-            tracking_lin_vel = 5.0#2.0
-            tracking_ang_vel = 1.0#0.5
+            tracking_lin_vel = 10.0#2.0
+            tracking_ang_vel = 5.#0.5
             lin_vel_z = -0.2#-0.0
-            ang_vel_xy = -0.5 #-0.0
-            orientation = -10.0#-0.5
+            ang_vel_xy = -0.05 #-0.0
+            orientation = -5.0#-0.5
             torques = -0.00001#-0.0002
-            dof_vel = -5e-5#-0.
+            dof_vel = -0.
             dof_acc = -2.5e-7#-2.5e-8
-            base_height = -1.0#-0.2
+            base_height = -20.0#-0.2
             feet_air_time =  0#1.0
-            collision = -1.
+            collision = -10.
             feet_stumble = -0.0 
             action_rate = -0.01
-            stand_still = 0
-            dof_pos_limits =-10.
-            no_moonwalk = -5.0
+            stand_still = -1.0#0
+            dof_pos_limits =-2.
+            no_moonwalk = 0.#-5.0
             base_level = 0.0#-1.0e-3
             no_fly = 1.0 
             hip_angle = 0#-0.01
+
+            feet_distance = -100
+            survival = 0.1
+            wheel_adjustment = 1.0 # 1.0 off
+            leg_symmetry = 10.0
 
         only_positive_rewards = False # if true negative total rewards are clipped at zero (avoids early termination problems)
         tracking_sigma = 0.25 # tracking reward = exp(-error^2/sigma)
         soft_dof_pos_limit = 0.9 # percentage of urdf limits, values above this limit are penalized
         soft_dof_vel_limit = 1.
         soft_torque_limit = 1.
-        base_height_target = 0.4 #0.25
+        base_height_target = 0.35 #0.25
         max_contact_force = 100
+
+        min_feet_distance = 0.57
+        max_feet_distance = 0.60
+        nominal_foot_position_tracking_sigma = 0.005
+        nominal_foot_position_tracking_sigma_wrt_v = 0.5
+        leg_symmetry_tracking_sigma = 0.001
+        foot_x_position_sigma = 0.001
 
     class control( LeggedRobotCfg.control ):
         # PD Drive parameters:
