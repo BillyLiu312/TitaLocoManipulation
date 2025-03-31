@@ -54,15 +54,15 @@ class TitaRoughCfg( LeggedRobotCfg ):
         slope_treshold = 0.75 # slopes above this threshold will be corrected to vertical surfaces
 
     class init_state( LeggedRobotCfg.init_state ):
-        pos = [0.0, 0.0, 0.6] # x,y,z [m]
+        pos = [0.0, 0.0, 0.3] # x,y,z [m]
         default_joint_angles = { # = target angles [rad] when action = 0.0
             'right_ankle': 0.,   # [rad]
-            'right_knee': -2.,   # [rad]
-            'right_hip': 1. ,  # [rad]
+            'right_knee': -1.5,   # [rad]
+            'right_hip': 0.8 ,  # [rad]
 
             'left_ankle': 0.,   # [rad]
-            'left_knee': -2.,   # [rad]
-            'left_hip': 1. ,  # [rad]
+            'left_knee': -1.5,   # [rad]
+            'left_hip': 0.8,  # [rad]
             
             'arm_joint00':0.,           
             'arm_joint01':0.,
@@ -73,14 +73,14 @@ class TitaRoughCfg( LeggedRobotCfg ):
 
         }
     class goal_ee:
-        local_axis_z_offset = 0.3
-        init_local_cube_object_pos = [0.5,0,0.5]
+        local_axis_z_offset = 0.5
+        init_local_cube_object_pos = [0.5,0,0.35]
         num_commands = 3
         traj_time = [0.6, 1.2]
         hold_time = [0.2, 0.4]
-        collision_upper_limits = [0.3, 0.15, 0.05 - 0.165 + 0.15]
-        collision_lower_limits = [-0.2, -0.15, -0.35 - 0.165 + 0.15]
-        underground_limit = -0.57 + 0.15
+        collision_upper_limits = [0.3, 0.15, 0.05 - 0.165]
+        collision_lower_limits = [-0.2, -0.15, -0.35 - 0.165]
+        underground_limit = -0.57
         num_collision_check_samples = 10
         command_mode = 'cart'
         class ranges:
@@ -99,42 +99,55 @@ class TitaRoughCfg( LeggedRobotCfg ):
         class scales( LeggedRobotCfg.rewards.scales ):
             termination = -0.0
             end = 0
-            tracking_lin_vel = 5.0#2.0
-            tracking_ang_vel = 1.0#0.5
+            tracking_lin_vel = 10.0#2.0
+            tracking_ang_vel = 5.0#0.5
             lin_vel_z = -0.2#-0.0
-            ang_vel_xy = -0.5 #-0.0
-            orientation = -10.0#-0.5
+            ang_vel_xy = -0.05 #-0.0
+            orientation = -5.0#-0.5
             torques = -0.00001#-0.0002
-            dof_vel = -5e-5#-0.
+            dof_vel = -0.
             dof_acc = -2.5e-7#-2.5e-8
-            base_height = -1.0#-0.2
+            base_height = -20.0#-0.2
             feet_air_time =  0#1.0
-            collision = -1.
+            collision = -10.
             feet_stumble = -0.0 
             action_rate = -0.01
-            stand_still = 0
-            dof_pos_limits =-10.
-            no_moonwalk = -5.0
+            stand_still = -1.0
+            dof_pos_limits =-2.
+            no_moonwalk = -0.0
             object_distance = 2.
             object_distance_l2 = -10
             base_level = 0.0#-1.0e-3
             no_fly = 1.0 
             hip_angle = 0#-0.01
 
+            feet_distance = -10.0
+            survival = 0.1
+            wheel_adjustment = 1.0 # 1.0 off
+            leg_symmetry = 10.0
+            foot_air_spinning = -0.02
+
         only_positive_rewards = False # if true negative total rewards are clipped at zero (avoids early termination problems)
         tracking_sigma = 0.25 # tracking reward = exp(-error^2/sigma)
         soft_dof_pos_limit = 0.9 # percentage of urdf limits, values above this limit are penalized
-        soft_dof_vel_limit = 0.9 #1.
-        soft_torque_limit = 0.9 #1.
-        base_height_target = 0.5 #0.25
+        soft_dof_vel_limit = 1.
+        soft_torque_limit = 1.
+        base_height_target = 0.35 #0.25
         max_contact_force = 100
+
+        min_feet_distance = 0.57
+        max_feet_distance = 0.60
+        nominal_foot_position_tracking_sigma = 0.005
+        nominal_foot_position_tracking_sigma_wrt_v = 0.5
+        leg_symmetry_tracking_sigma = 0.01**2
+        foot_x_position_sigma = 0.001
 
     class control( LeggedRobotCfg.control ):
         # PD Drive parameters:
         control_type = 'P'
         
-        stiffness = {"arm_joint":20,"ankle":10,"knee":10,"hip":10}  # [N*m/rad] inlcudes all joints
-        damping = {"arm_joint":0.2,"ankle":10,"knee":0.2,"hip":0.2}     # [N*m*s/rad] inlcudes all joints
+        stiffness = {"arm_joint":20,"ankle":60,"knee":60,"hip":60}  # [N*m/rad] inlcudes all joints
+        damping = {"arm_joint":0.2,"ankle":1,"knee":1,"hip":1}     # [N*m*s/rad] inlcudes all joints
         # stiffness = {"arm_joint":60,"ankle":60,"knee":60,"hip":60}  # [N*m/rad] inlcudes all joints
         # damping = {"arm_joint":1,"ankle":1,"knee":1,"hip":1}     # [N*m*s/rad] inlcudes all joints
         # action scale: target angle = actionScale * action + defaultAngle
@@ -143,12 +156,13 @@ class TitaRoughCfg( LeggedRobotCfg ):
         arm_damping = 0.5 #postion control
         
         action_scale = 0.25#0.5
+        action_scale_vel = 8.0 # change to None if use position control to control the wheel, otherwise vel control the wheel
         # decimation: Number of control action updates @ sim DT per policy DT
-        decimation = 4#2
+        decimation = 5#2
 
     class domain_rand( LeggedRobotCfg.domain_rand ):
         randomize_friction = True
-        friction_range = [0.8, 1.5]#[0.2, 1.5]
+        friction_range = [0.2, 1.6]#[0.2, 1.5]
         randomize_base_mass = False
         added_mass_range = [-1.0, 1.0]#[-4., 4.]
         push_robots = False#True

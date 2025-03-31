@@ -90,10 +90,11 @@ class TitaNoArmRoughCfg( LeggedRobotCfg ):
             no_fly = 1.0 
             hip_angle = 0#-0.01
 
-            feet_distance = -100
+            feet_distance = -10.0
             survival = 0.1
             wheel_adjustment = 1.0 # 1.0 off
             leg_symmetry = 10.0
+            foot_air_spinning = -0.02
 
         only_positive_rewards = False # if true negative total rewards are clipped at zero (avoids early termination problems)
         tracking_sigma = 0.25 # tracking reward = exp(-error^2/sigma)
@@ -107,7 +108,7 @@ class TitaNoArmRoughCfg( LeggedRobotCfg ):
         max_feet_distance = 0.60
         nominal_foot_position_tracking_sigma = 0.005
         nominal_foot_position_tracking_sigma_wrt_v = 0.5
-        leg_symmetry_tracking_sigma = 0.001
+        leg_symmetry_tracking_sigma = 0.01**2
         foot_x_position_sigma = 0.001
 
     class control( LeggedRobotCfg.control ):
@@ -120,13 +121,14 @@ class TitaNoArmRoughCfg( LeggedRobotCfg ):
         # damping = {"arm_joint":1,"ankle":1,"knee":1,"hip":1}     # [N*m*s/rad] inlcudes all joints
         # action scale: target angle = actionScale * action + defaultAngle
         
-        action_scale = 0.5
+        action_scale = 0.25
+        action_scale_vel = 8.0 # change to None if use position control to control the wheel, otherwise vel control the wheel
         # decimation: Number of control action updates @ sim DT per policy DT
-        decimation = 2
+        decimation = 5
 
     class domain_rand( LeggedRobotCfg.domain_rand ):
         randomize_friction = True
-        friction_range = [1.5, 1.8]#[0.2, 1.5]
+        friction_range = [0.2, 1.6]#[0.2, 1.5]
         randomize_base_mass = False
         added_mass_range = [-1.0, 1.0]#[-4., 4.]
         push_robots = False#True
@@ -176,7 +178,7 @@ class TitaNoArmRoughCfgPPO( LeggedRobotCfgPPO ):
         experiment_name = 'tita_noarm'
         resume = False
         num_steps_per_env = 24 # per iteration
-        max_iterations = 10000
+        max_iterations = 5000
         save_interval =100
         load_run = -1
         checkpoint = -1

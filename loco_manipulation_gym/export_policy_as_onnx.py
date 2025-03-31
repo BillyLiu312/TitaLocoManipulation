@@ -32,7 +32,7 @@ def export_policy_as_onnx(args):
     ).to(args.rl_device)
     actor_critic.load_state_dict(loaded_dict['model_state_dict'])
     # export policy as an onnx file
-    path = os.path.join(LOCO_MANI_GYM_ROOT_DIR, 'logs', train_cfg.runner.experiment_name, 'exported', 'policies')
+    path = os.path.join(os.path.dirname(resume_path),'exported')
     os.makedirs(path, exist_ok=True)
     path = os.path.join(path, "policy.onnx")
     model = copy.deepcopy(actor_critic.actor).to("cpu")
@@ -52,12 +52,12 @@ def export_policy_as_onnx(args):
         export_params=True,
         opset_version=13,
     )
-    engine_path =  os.path.join(LOCO_MANI_GYM_ROOT_DIR, 'logs', train_cfg.runner.experiment_name, 'exported', 'policies/policy.engine')
+    engine_path =  os.path.join(os.path.dirname(resume_path), 'exported', 'policy.engine')
 
     if os.path.exists(engine_path):
-        print(f"Engine file already exists: {engine_path}")
+        cprint(f"Engine file already exists: {engine_path}", 'yellow')
     else:   
-        print("Exported policy as onnx script to: ", engine_path)
+        cprint(f"Exported policy as onnx script to: {engine_path}", 'green')
         convert_onnx_to_engine(engine_path)
 
 def convert_onnx_to_engine(engine_path):

@@ -33,7 +33,7 @@ import os
 
 import isaacgym
 from loco_manipulation_gym.envs import *
-from loco_manipulation_gym.utils import  get_args, export_policy_as_jit, task_registry, Logger
+from loco_manipulation_gym.utils import  get_args, export_policy_as_jit, task_registry, Logger, get_load_path
 
 import numpy as np
 import torch
@@ -61,9 +61,12 @@ def play(args):
     
     # export policy as a jit module (used to run it from C++)
     if EXPORT_POLICY:
-        path = os.path.join(LOCO_MANI_GYM_ROOT_DIR, 'logs', train_cfg.runner.experiment_name, 'exported', 'policies')
-        export_policy_as_jit(ppo_runner.alg.actor_critic, path)
-        print('Exported policy as jit script to: ', path)
+        
+        path = os.path.join(LOCO_MANI_GYM_ROOT_DIR, 'logs', train_cfg.runner.experiment_name)
+        export_path = os.path.dirname(get_load_path(path, load_run=train_cfg.runner.load_run, checkpoint=train_cfg.runner.checkpoint))
+        export_path = os.path.join(export_path, 'exported', 'policies')
+        export_policy_as_jit(ppo_runner.alg.actor_critic, export_path)
+        print('Exported policy as jit script to: ', export_path)
 
     logger = Logger(env.dt)
     robot_index = 0 # which robot is used for logging

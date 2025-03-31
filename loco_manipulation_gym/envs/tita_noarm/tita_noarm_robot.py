@@ -51,6 +51,8 @@ from loco_manipulation_gym.utils.math import quat_apply_yaw, wrap_to_pi
 from loco_manipulation_gym.utils.helpers import class_to_dict
 from .tita_noarm_config import TitaNoArmRoughCfg
 
+from termcolor import cprint
+
 class TitaNoArm(LeggedRobot):
     cfg:TitaNoArmRoughCfg
 
@@ -387,6 +389,7 @@ class TitaNoArm(LeggedRobot):
 
         actions_scaled = actions * self.cfg.control.action_scale
         control_type = self.cfg.control.control_type
+        action_scale_vel = self.cfg.control.action_scale_vel
         modify_dof_vel = self.dof_vel.clone().detach()
         modify_dof_vel[:,self.arm_indices] = 0
         if control_type=="P":
@@ -400,6 +403,11 @@ class TitaNoArm(LeggedRobot):
             torques = actions_scaled
         else:
             raise NameError(f"Unknown controller type: {control_type}")
+        if action_scale_vel:
+            V_list = [2, 5]
+            torques[:,V_list] = self.d_gains[V_list]*(action_scale_vel* actions[:,V_list] - self.dof_vel[:,V_list])
+            # print(torques[0,V_list])
+
         return torch.clip(torques, -self.torque_limits, self.torque_limits)
 
     def _reset_dofs(self, env_ids):
@@ -1205,5 +1213,12 @@ class TitaNoArm(LeggedRobot):
                             (self.base_position).unsqueeze(1).repeat(1, len(self.feet_indices), 1)
         for i in range(len(self.feet_indices)):
             foot_positions_base[:, i, :] = quat_rotate_inverse(self.base_quat, foot_positions_base[:, i, :] )
-        leg_symmetry_err = (abs(foot_positions_base[:,0,1])-abs(foot_positions_base[:,1,1]))
+        leg_symmetry_err = (abs(foot_positions_base[:,0,0]-foot_positions_base[:,1,0]))
+        # print(foot_positions_base[1,:,0])
         return torch.exp(-(leg_symmetry_err ** 2)/ self.cfg.rewards.leg_symmetry_tracking_sigma)
+
+    def _reward_foot_air_spinning(self):
+        """Penalize ankle joint spinning when feet is not in contact with ground"""
+        contact_z = self.contact_forces[:, self.feet_indices, 2] > 0.5
+        return torch.sum(torch.square(self.dof_vel[:, [2,5]]) * (~contact_z), dim=1)
+

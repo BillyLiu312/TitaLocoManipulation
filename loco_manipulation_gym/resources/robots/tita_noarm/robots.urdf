@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <robot name="tita">
+  <mujoco>
+    <compiler 
+      meshdir="meshes/" 
+      balanceinertia="true" 
+      discardvisual="false" />
+  </mujoco>
   <!-- material -->
-    <material name="black">
+  <material name="black">
     <color rgba="0.19607843137254902 0.19607843137254902 0.19607843137254902 1.0"/>
   </material>
   <material name="blue">
@@ -33,7 +39,7 @@
   </material>
 
   <!-- world base -->
-  <link name="world" />
+  <link name="world"></link>
   <joint name="floating_base" type="floating">
     <origin rpy="0 0 0" xyz="0 0 0" />
     <parent link="world" />
@@ -177,7 +183,7 @@
     <parent link="right_shin" />
     <child link="right_wheel" />
     <axis xyz="0 0 1" />
-    <limit effort="15" lower="-999999" upper="999999" velocity="20"/>
+    <limit effort="100" lower="-6.283185e4" upper="6.283185e4" velocity="100"/>
   </joint>
 
     <!-- arm -->
@@ -458,7 +464,7 @@
     <parent link="left_shin"/>
     <child link="left_wheel"/>
     <axis xyz="0 0 1"/>
-    <limit effort="15" lower="-999999" upper="999999" velocity="20"/>
+    <limit effort="100" lower="-6.283185e4" upper="6.283185e4" velocity="100"/>
   </joint>
 
 </robot>
