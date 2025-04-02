@@ -50,6 +50,7 @@ from loco_manipulation_gym.utils.terrain import Terrain
 from loco_manipulation_gym.utils.math import quat_apply_yaw, wrap_to_pi
 from loco_manipulation_gym.utils.helpers import class_to_dict
 from .tita_config import TitaRoughCfg
+from loco_manipulation_gym.utils.WireframeGeometry import WireframeArrowGeometry
 
 from termcolor import cprint
 
@@ -118,7 +119,8 @@ class Tita(LeggedRobot):
         self.last_foot_positions[:] = self.foot_positions[:]
         self.last_base_position[:] = self.base_position[:]
 
-        if self.viewer :
+        if self.viewer:
+
             self._draw_ee_goal_track()
             self._draw_debug_vis()
 
@@ -364,7 +366,7 @@ class Tita(LeggedRobot):
         # set small commands to zero
         self.commands[env_ids, :2] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.2).unsqueeze(1)
 
-    def orientation_error(self,desired, current):
+    def orientation_error(self, desired, current):
         cc = quat_conjugate(current)
         q_r = quat_mul(desired, cc)
         return q_r[:, 0:3] * torch.sign(q_r[:, 3]).unsqueeze(-1)
@@ -372,6 +374,7 @@ class Tita(LeggedRobot):
     def control_ik(self,local_ee_pose,local_goal_pose,local_j_eef):
         pos_err = local_goal_pose[:,0:3] - local_ee_pose[:,0:3]
         orn = torch.tensor([0,0,0,1], device=self.device).repeat(self.num_envs, 1)
+        # orn_err = self.orientation_error(quat_from_euler_xyz(ee_goal_orn_euler[:,0], ee_goal_orn_euler[:,1], ee_goal_orn_euler[:,2]), self.rigid_body_states[:, self.hand_index, 3:7])
         orn_err = self.orientation_error(orn, orn)
         dpose = torch.cat([pos_err, orn_err], -1).unsqueeze(-1)
         # solve damped least squares
@@ -1003,6 +1006,8 @@ class Tita(LeggedRobot):
         self.ee_start_sphere = torch.zeros(self.num_envs, 3, device=self.device)
         self.ee_goal_cart = torch.zeros(self.num_envs, 3, device=self.device)
         self.ee_goal_sphere = torch.zeros(self.num_envs, 3, device=self.device)
+        self.ee_start_orn_euler = torch.zeros(self.num_envs, 3, device=self.device)
+        self.curr_ee_orn_euler = torch.zeros(self.num_envs, 3, device=self.device)
         self.ee_goal_delta_orn_euler = torch.zeros(self.num_envs, 3, device=self.device)
         self.ee_goal_orn_euler = torch.zeros(self.num_envs, 3, device=self.device)
         self.curr_ee_goal_cart = torch.zeros(self.num_envs, 3, device=self.device)
@@ -1081,6 +1086,7 @@ class Tita(LeggedRobot):
         t = torch.clip(self.goal_timer / self.traj_timesteps, 0, 1)
         self.curr_ee_goal_sphere[:] = torch.lerp(self.ee_start_sphere, self.ee_goal_sphere, t[:, None])
         self.curr_ee_goal_cart[:] = self.sphere2cart(self.curr_ee_goal_sphere)
+        self.curr_ee_orn_euler[:] = torch.lerp(self.ee_start_orn_euler, self.ee_goal_orn_euler, t[:, None])
         self.goal_timer += 1
         resample_id = (self.goal_timer > self.traj_total_timesteps).nonzero(as_tuple=False).flatten()
         self._resample_ee_goal(resample_id)
@@ -1115,6 +1121,7 @@ class Tita(LeggedRobot):
     def _resample_ee_goal(self, env_ids, is_init=False):
         if len(env_ids) > 0:
             init_env_ids = env_ids.clone()
+            self.ee_start_orn_euler[env_ids] = self.ee_goal_orn_euler[env_ids]
             self._resample_ee_goal_orn_once(env_ids)
             # if is_init:
             #     self.ee_start_sphere[env_ids] = self.init_start_ee_sphere[env_ids].clone()
@@ -1132,7 +1139,7 @@ class Tita(LeggedRobot):
             self.traj_timesteps[init_env_ids] = torch_rand_float(self.cfg.goal_ee.traj_time[0], self.cfg.goal_ee.traj_time[1], (len(init_env_ids), 1), device=self.device).squeeze() / self.dt
 
     def _draw_ee_goal_track(self):
-        sphere_geom = gymutil.WireframeSphereGeometry(0.005, 8, 8, None, color=(1, 0, 0))
+        sphere_geom = gymutil.WireframeSphereGeometry(0.005, 8, 8, None, color=(0, 1, 0))
 
         t = torch.linspace(0, 1, 10, device=self.device)[None, None, None, :]
         ee_target_all_sphere = torch.lerp(self.ee_start_sphere[..., None], self.ee_goal_sphere[..., None], t).squeeze()
@@ -1156,19 +1163,28 @@ class Tita(LeggedRobot):
         sphere_geom = gymutil.WireframeSphereGeometry(0.05, 4, 4, None, color=(1, 1, 0))
         transformed_target_ee = torch.cat([self.root_states[:, :2], self.z_invariant_offset], dim=1) + quat_apply(self.base_yaw_quat, self.curr_ee_goal_cart)
 
+        arrow_geom = WireframeArrowGeometry(color=(1, 0, 0))
+        target_quat = quat_from_euler_xyz(self.curr_ee_orn_euler[:,0], self.curr_ee_orn_euler[:,1], self.curr_ee_orn_euler[:,2])
+
         sphere_geom_3 = gymutil.WireframeSphereGeometry(0.05, 4, 4, None, color=(0, 1, 1))
         upper_arm_pose = torch.cat([self.root_states[:, :2], self.z_invariant_offset], dim=1)
 
         sphere_geom_2 = gymutil.WireframeSphereGeometry(0.05, 4, 4, None, color=(0, 0, 1))
-        
-
         ee_pose = torch.cat([self.root_states[:, :2], self.z_invariant_offset], dim=1) + quat_apply(self.base_yaw_quat, self._local_gripper_pos)
+
         sphere_geom_origin = gymutil.WireframeSphereGeometry(0.1, 8, 8, None, color=(0, 1, 0))
         sphere_pose = gymapi.Transform(gymapi.Vec3(0, 0, 0), r=None)
         gymutil.draw_lines(sphere_geom_origin, self.gym, self.viewer, self.envs[0], sphere_pose)
+
+
         for i in range(self.num_envs):
             sphere_pose = gymapi.Transform(gymapi.Vec3(transformed_target_ee[i, 0], transformed_target_ee[i, 1], transformed_target_ee[i, 2]), r=None)
-            gymutil.draw_lines(sphere_geom, self.gym, self.viewer, self.envs[i], sphere_pose) 
+            gymutil.draw_lines(sphere_geom, self.gym, self.viewer, self.envs[i], sphere_pose)
+
+            quat_i = target_quat[i].cpu().numpy()  # Convert to numpy array [w, x, y, z]
+            gymapi_quat = gymapi.Quat(quat_i[1], quat_i[2], quat_i[3], quat_i[0])
+            arrow_pose = gymapi.Transform(gymapi.Vec3(transformed_target_ee[i, 0], transformed_target_ee[i, 1], transformed_target_ee[i, 2]), r=gymapi_quat)
+            gymutil.draw_lines(arrow_geom, self.gym, self.viewer, self.envs[i], arrow_pose)
             
             sphere_pose_2 = gymapi.Transform(gymapi.Vec3(ee_pose[i, 0], ee_pose[i, 1], ee_pose[i, 2]), r=None)
             gymutil.draw_lines(sphere_geom_2, self.gym, self.viewer, self.envs[i], sphere_pose_2) 
@@ -1332,6 +1348,20 @@ class Tita(LeggedRobot):
         #dis_err = torch.sum(torch.square(self._gripper_pos-self.robot_root_states[:,0:3]+torch.tensor([0.5, 0.3, 0.4],device=self.device)), dim=1)
         #print("_object_distance:",dis_err,"value:",torch.exp(-dis_err/self.cfg.rewards.object_sigma).shape)  #[0.7~3.5]
         return dis_err
+
+    def _reward_object_orientation_distance(self):
+        """Reward for orientation of the end-effector"""
+        current_orn = self.rigid_body_states[:, self.hand_index, 3:7]
+        target_orn = quat_from_euler_xyz(self.curr_ee_orn_euler[:,0], self.curr_ee_orn_euler[:,1], self.curr_ee_orn_euler[:,2])
+        current_orn = current_orn / torch.norm(current_orn, dim=1, keepdim=True)
+        target_orn = target_orn / torch.norm(target_orn, dim=1, keepdim=True)
+
+        dot = torch.abs(torch.sum(current_orn * target_orn, dim=1))
+
+        angle = 2 * torch.arccos(torch.clip(dot, -1.0, 1.0))
+
+        return torch.exp(-angle ** 2 / self.cfg.rewards.object_orientation_tracking_sigma)
+
 
     def _reward_base_level(self):
         # Penalize non-horizontal posture of the base_link

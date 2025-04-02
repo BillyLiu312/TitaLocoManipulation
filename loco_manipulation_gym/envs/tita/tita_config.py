@@ -78,9 +78,9 @@ class TitaRoughCfg( LeggedRobotCfg ):
         num_commands = 3
         traj_time = [0.6, 1.2]
         hold_time = [0.2, 0.4]
-        collision_upper_limits = [0.3, 0.15, 0.05 - 0.165]
-        collision_lower_limits = [-0.2, -0.15, -0.35 - 0.165]
-        underground_limit = -0.57
+        collision_upper_limits = [0.45, 0.15, 0.35]
+        collision_lower_limits = [0, -0.15, -0.15]
+        underground_limit = -0.3
         num_collision_check_samples = 10
         command_mode = 'cart'
         class ranges:
@@ -88,7 +88,7 @@ class TitaRoughCfg( LeggedRobotCfg ):
             init_pos_l = [0.3, 0.6]
             init_pos_p = [-1 * np.pi / 6, 1 * np.pi / 3]
             init_pos_y = [-1 * np.pi / 4, 1 * np.pi / 4]
-            final_delta_orn = [[-0, 0], [-0, 0], [-0, 0]]
+            final_delta_orn = [[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]] # roll, pitch, yaw (rad)
 
         class init_ranges:
             pos_l = [0.3, 0.5] # min max [m/s]
@@ -117,6 +117,7 @@ class TitaRoughCfg( LeggedRobotCfg ):
             no_moonwalk = -0.0
             object_distance = 2.
             object_distance_l2 = -10
+            object_orientation_distance = 0#2.0
             base_level = 0.0#-1.0e-3
             no_fly = 1.0 
             hip_angle = 0#-0.01
@@ -141,6 +142,7 @@ class TitaRoughCfg( LeggedRobotCfg ):
         nominal_foot_position_tracking_sigma_wrt_v = 0.5
         leg_symmetry_tracking_sigma = 0.01**2
         foot_x_position_sigma = 0.001
+        object_orientation_tracking_sigma = 0.5**2
 
     class control( LeggedRobotCfg.control ):
         # PD Drive parameters:
@@ -176,7 +178,7 @@ class TitaRoughCfg( LeggedRobotCfg ):
 
 
     class asset( LeggedRobotCfg.asset ):
-        file = '{LOCO_MANI_GYM_ROOT_DIR}/resources/robots/tita/urdf/tita.urdf'
+        file = '{LOCO_MANI_GYM_ROOT_DIR}/resources/robots/tita_arx/urdf/tita_arx.urdf'
         name = "tita"
 
         foot_name = "wheel"  #link name

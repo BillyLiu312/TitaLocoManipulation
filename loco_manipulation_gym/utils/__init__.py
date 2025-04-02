@@ -34,3 +34,4 @@ from .logger import Logger
 from .math import *
 from .terrain import Terrain
 from .utils import split_and_pad_trajectories,unpad_trajectories,quaternion_slerp, Normalize, Normalizer,RunningMeanStd
+from .WireframeGeometry import WireframeArrowGeometry
