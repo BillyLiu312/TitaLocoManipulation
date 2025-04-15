@@ -1006,13 +1006,21 @@ class Tita(LeggedRobot):
         self.ee_start_sphere = torch.zeros(self.num_envs, 3, device=self.device)
         self.ee_goal_cart = torch.zeros(self.num_envs, 3, device=self.device)
         self.ee_goal_sphere = torch.zeros(self.num_envs, 3, device=self.device)
-        self.orn_start_euler = torch.zeros(self.num_envs, 3, device=self.device)
-        self.curr_orn_goal_euler = torch.zeros(self.num_envs, 3, device=self.device)
-        self.curr_goal_quat = torch.zeros(self.num_envs, 4, device=self.device)
-        self.ee_goal_delta_orn_euler = torch.zeros(self.num_envs, 3, device=self.device)
-        self.ee_goal_orn_euler = torch.zeros(self.num_envs, 3, device=self.device)
         self.curr_ee_goal_cart = torch.zeros(self.num_envs, 3, device=self.device)
         self.curr_ee_goal_sphere = torch.zeros(self.num_envs, 3, device=self.device)
+        
+        self.orn_start_euler = torch.zeros(self.num_envs, 3, device=self.device)
+        self.ee_start_quat = torch.zeros(self.num_envs, 4, device=self.device)
+        self.ee_start_quat = self.euler2quat(self.orn_start_euler)
+        self.curr_orn_goal_euler = torch.zeros(self.num_envs, 3, device=self.device)
+        self.curr_goal_quat = torch.zeros(self.num_envs, 4, device=self.device)
+        self.curr_goal_quat = self.euler2quat(self.curr_orn_goal_euler)
+        self.ee_goal_delta_orn_euler = torch.zeros(self.num_envs, 3, device=self.device)
+        self.ee_goal_orn_euler = torch.zeros(self.num_envs, 3, device=self.device)
+        self.ee_goal_quat = torch.zeros(self.num_envs, 4, device=self.device)
+        self.ee_goal_quat = self.euler2quat(self.ee_goal_orn_euler)
+        self.angle_diff = torch.zeros(self.num_envs, 1, device=self.device)
+
         self.collision_lower_limits = torch.tensor(self.cfg.goal_ee.collision_lower_limits, device=self.device, dtype=torch.float)
         self.collision_upper_limits = torch.tensor(self.cfg.goal_ee.collision_upper_limits, device=self.device, dtype=torch.float)
         self.underground_limit = self.cfg.goal_ee.underground_limit
@@ -1062,7 +1070,7 @@ class Tita(LeggedRobot):
         # 使用四元数旋转向量得到夹爪实际的朝向向量
         rotated_forward_vector = quat_apply(self._gripper_quat, forward_vector)
         # 计算偏移向量
-        offset_vector = rotated_forward_vector * 0.15
+        offset_vector = rotated_forward_vector * self.cfg.goal_ee.gripper_x_offset
         # 应用偏移
         self._gripper_pos_bias = self._gripper_pos + offset_vector
         
@@ -1083,8 +1091,17 @@ class Tita(LeggedRobot):
         self.base_to_obj_dist = self._cube_object_pos[:,:2] - self.root_states[:,:2]
         self.base_align_z_axis[:,:2] = self.root_states[:, :2]
 
+    def compute_angle_diff(self):
+        current_orn = self.ee_orn.clone()
+        target_orn = self.curr_goal_quat.clone()
+        
+        current_orn = current_orn / torch.norm(current_orn, dim=1, keepdim=True)
+        target_orn = target_orn / torch.norm(target_orn, dim=1, keepdim=True)
+        
+        dot_product = torch.sum(current_orn * target_orn, dim=1)
 
-
+        dot_product = torch.clip(dot_product, -1.0, 1.0)
+        self.angle_diff = 2.0 * torch.acos(torch.abs(dot_product))
 
     def cart2sphere(self,cart):
         sphere = torch.zeros_like(cart)
@@ -1099,13 +1116,24 @@ class Tita(LeggedRobot):
         cart[:, 1] = sphere[:, 0] * torch.sin(sphere[:, 2])
         cart[:, 2] = sphere[:, 0] * torch.cos(sphere[:, 2]) * torch.sin(sphere[:, 1])
         return cart
+
+    def euler2quat(self, euler):
+        quat = quat_from_euler_xyz(euler[:,0], euler[:,1], euler[:,2])
+        return quat
+
     def update_curr_ee_goal(self):
         self.refresh_ee_goal_variable()
         t = torch.clip(self.goal_timer / self.traj_timesteps, 0, 1)
         self.curr_ee_goal_sphere[:] = torch.lerp(self.ee_start_sphere, self.ee_goal_sphere, t[:, None])
         self.curr_ee_goal_cart[:] = self.sphere2cart(self.curr_ee_goal_sphere)
-        self.curr_orn_goal_euler[:] = torch.lerp(self.orn_start_euler, self.ee_goal_orn_euler, t[:, None])
-        self.curr_goal_quat = quat_from_euler_xyz(self.curr_orn_goal_euler[:,0], self.curr_orn_goal_euler[:,1], self.curr_orn_goal_euler[:,2])
+
+        dot_product = torch.sum(self.ee_start_quat * self.ee_goal_quat, dim=1)
+        mask = dot_product < 0
+        self.ee_start_quat[mask] = -self.ee_start_quat[mask]
+        self.curr_goal_quat = torch.lerp(self.ee_start_quat, self.ee_goal_quat, t[:, None])
+        self.curr_orn_goal_euler = get_euler_xyz(self.curr_goal_quat)
+        self.compute_angle_diff()
+
         self.goal_timer += 1
         resample_id = (self.goal_timer > self.traj_total_timesteps).nonzero(as_tuple=False).flatten()
         self._resample_ee_goal(resample_id)
@@ -1142,6 +1170,8 @@ class Tita(LeggedRobot):
             init_env_ids = env_ids.clone()
             self.orn_start_euler[env_ids] = self.ee_goal_orn_euler[env_ids]
             self._resample_ee_goal_orn_once(env_ids)
+            self.ee_goal_quat = self.euler2quat(self.ee_goal_orn_euler)
+            self.ee_start_quat = self.euler2quat(self.orn_start_euler)
             # if is_init:
             #     self.ee_start_sphere[env_ids] = self.init_start_ee_sphere[env_ids].clone()
             #     self._resample_ee_goal_sphere_once(env_ids, self.cfg.goal_ee.init_ranges)
@@ -1374,34 +1404,22 @@ class Tita(LeggedRobot):
         return torch.sum((torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1) -  self.cfg.rewards.max_contact_force).clip(min=0.), dim=1)
     
     def _reward_object_distance(self) -> Tuple[Tensor, Tensor, Tensor]:
-        """Reward for lifting the object off the table."""
+        """Reward for gripper tracking the object."""
         dis_err = torch.sum(torch.square(self._local_gripper_pos-self.curr_ee_goal), dim=1)
         #dis_err = torch.sum(torch.square(self._gripper_pos-self.robot_root_states[:,0:3]+torch.tensor([0.5, 0.3, 0.4],device=self.device)), dim=1)
         #print("_object_distance:",dis_err,"value:",torch.exp(-dis_err/self.cfg.rewards.object_sigma).shape)  #[0.7~3.5]
-        return torch.exp(-dis_err/0.1)
+        return torch.exp(-dis_err/self.cfg.rewards.object_tracking_sigma)
     
     def _reward_object_distance_l2(self) -> Tuple[Tensor, Tensor, Tensor]:
-        """Reward for lifting the object off the table."""
+        """Penalize for gripper no tracking the object."""
         dis_err = torch.sum(torch.square(self._local_gripper_pos-self.curr_ee_goal), dim=1)
         #dis_err = torch.sum(torch.square(self._gripper_pos-self.robot_root_states[:,0:3]+torch.tensor([0.5, 0.3, 0.4],device=self.device)), dim=1)
         #print("_object_distance:",dis_err,"value:",torch.exp(-dis_err/self.cfg.rewards.object_sigma).shape)  #[0.7~3.5]
         return dis_err
 
     def _reward_object_orientation_distance(self):
-        """Reward for orientation of the end-effector"""
-        current_orn = self.ee_orn.clone()
-        target_orn = self.curr_goal_quat.clone()
-        
-        current_orn = current_orn / torch.norm(current_orn, dim=1, keepdim=True)
-        target_orn = target_orn / torch.norm(target_orn, dim=1, keepdim=True)
-
-        return torch.sum(current_orn * target_orn, dim=1)
-        # dot_product = torch.sum(current_orn * target_orn, dim=1)
-
-        # dot_product = torch.clip(dot_product, -1.0, 1.0)
-        # angle_diff = 2.0 * torch.acos(torch.abs(dot_product))
-
-        # return torch.exp(- angle_diff / self.cfg.rewards.object_orientation_tracking_sigma)
+        """Reward for orientation of the end-effector tracking"""
+        return torch.exp(- self.angle_diff / self.cfg.rewards.object_orientation_tracking_sigma)
 
         # dot = torch.abs(torch.sum(current_orn * target_orn, dim=1))
 
@@ -1409,6 +1427,9 @@ class Tita(LeggedRobot):
 
         # return torch.exp(-angle ** 2 / self.cfg.rewards.object_orientation_tracking_sigma)
 
+    def _reward_object_orientation_distance_l2(self):
+        """Penalize for orientation of the end-effector no tracking"""
+        return self.angle_diff
 
     def _reward_base_level(self):
         # Penalize non-horizontal posture of the base_link
@@ -1503,13 +1524,22 @@ class Tita(LeggedRobot):
         reward = incline_x * wheel_x_mean > 0
         return reward
 
-    def _reward_leg_symmetry(self):
+    def _reward_leg_symmetry_y(self):
         foot_positions_base = self.foot_positions - \
                             (self.base_position).unsqueeze(1).repeat(1, len(self.feet_indices), 1)
         for i in range(len(self.feet_indices)):
             foot_positions_base[:, i, :] = quat_rotate_inverse(self.base_quat, foot_positions_base[:, i, :] )
         leg_symmetry_err = (abs(foot_positions_base[:,0,1])-abs(foot_positions_base[:,1,1]))
         return torch.exp(-(leg_symmetry_err ** 2)/ self.cfg.rewards.leg_symmetry_tracking_sigma)
+
+    def _reward_leg_symmetry_x(self):
+        foot_positions_base = self.foot_positions - \
+                            (self.base_position).unsqueeze(1).repeat(1, len(self.feet_indices), 1)
+        for i in range(len(self.feet_indices)):
+            foot_positions_base[:, i, :] = quat_rotate_inverse(self.base_quat, foot_positions_base[:, i, :] )
+        leg_symmetry_err = abs(foot_positions_base[:,0,0]-foot_positions_base[:,1,0])
+        return torch.exp(-(leg_symmetry_err ** 2)/ self.cfg.rewards.leg_symmetry_tracking_sigma)
+
 
     def _reward_foot_air_spinning(self):
         """Penalize ankle joint spinning when feet is not in contact with ground"""

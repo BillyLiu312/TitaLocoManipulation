@@ -74,6 +74,7 @@ class TitaRoughCfg( LeggedRobotCfg ):
         }
     class goal_ee:
         local_axis_z_offset = 0.5
+        gripper_x_offset = 0.1
         init_local_cube_object_pos = [0.5,0,0.35]
         num_commands = 3
         traj_time = [0.6, 1.2]
@@ -88,7 +89,7 @@ class TitaRoughCfg( LeggedRobotCfg ):
             init_pos_l = [0.3, 0.6]
             init_pos_p = [-1 * np.pi / 6, 1 * np.pi / 3]
             init_pos_y = [-1 * np.pi / 4, 1 * np.pi / 4]
-            final_delta_orn = [[-0.5, 0.5], [-0.5, 0.5], [-0.5, 0.5]] # roll, pitch, yaw (rad)
+            final_delta_orn = [[-0.4, 0.4], [-0.4, 0.4], [-0.4, 0.4]] # roll, pitch, yaw (rad)
 
         class init_ranges:
             pos_l = [0.3, 0.5] # min max [m/s]
@@ -116,16 +117,18 @@ class TitaRoughCfg( LeggedRobotCfg ):
             dof_pos_limits =-2.
             no_moonwalk = -0.0
             object_distance = 2.
-            object_distance_l2 = -10
-            object_orientation_distance = 1.0
+            object_distance_l2 = -15
+            object_orientation_distance = 2.#1.0
+            object_orientation_distance_l2 = -0.5
             base_level = 0#-1.0e-3
             no_fly = 1.0 
             hip_angle = 0#-0.01
 
-            feet_distance = -10.0
+            feet_distance = 0#-10.0
             survival = 0.1
             wheel_adjustment = 1.0 # 1.0 off
-            leg_symmetry = 1.0#10
+            leg_symmetry_y = 1.0#10
+            leg_symmetry_x = 1.0
             foot_air_spinning = -0.02
 
         only_positive_rewards = False # if true negative total rewards are clipped at zero (avoids early termination problems)
@@ -140,9 +143,10 @@ class TitaRoughCfg( LeggedRobotCfg ):
         max_feet_distance = 0.62
         nominal_foot_position_tracking_sigma = 0.005
         nominal_foot_position_tracking_sigma_wrt_v = 0.5
-        leg_symmetry_tracking_sigma = 0.05**2
+        leg_symmetry_tracking_sigma = 0.01**2
         foot_x_position_sigma = 0.001
-        object_orientation_tracking_sigma = 0.5
+        object_orientation_tracking_sigma = 0.25
+        object_tracking_sigma = 0.05
 
     class control( LeggedRobotCfg.control ):
         # PD Drive parameters:
