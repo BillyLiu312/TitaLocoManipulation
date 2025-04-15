@@ -6,7 +6,7 @@ import numpy as np
 class TitaRoughCfg( LeggedRobotCfg ):
     class env(LeggedRobotCfg.env):
         num_envs = 4096
-        num_observations = 57
+        num_observations = 61
         symmetric = False  #true :  set num_privileged_obs = None;    false: num_privileged_obs = observations + 187 ,set "terrain.measure_heights" to true
         num_privileged_obs = num_observations + 187 # if not None a priviledge_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise 
         num_actions = 12
@@ -88,7 +88,7 @@ class TitaRoughCfg( LeggedRobotCfg ):
             init_pos_l = [0.3, 0.6]
             init_pos_p = [-1 * np.pi / 6, 1 * np.pi / 3]
             init_pos_y = [-1 * np.pi / 4, 1 * np.pi / 4]
-            final_delta_orn = [[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]] # roll, pitch, yaw (rad)
+            final_delta_orn = [[-0.5, 0.5], [-0.5, 0.5], [-0.5, 0.5]] # roll, pitch, yaw (rad)
 
         class init_ranges:
             pos_l = [0.3, 0.5] # min max [m/s]
@@ -99,12 +99,12 @@ class TitaRoughCfg( LeggedRobotCfg ):
         class scales( LeggedRobotCfg.rewards.scales ):
             termination = -0.0
             end = 0
-            tracking_lin_vel = 10.0#2.0
-            tracking_ang_vel = 5.0#0.5
-            lin_vel_z = -0.2#-0.0
-            ang_vel_xy = -0.05 #-0.0
+            tracking_lin_vel = 1#10.0#2.0
+            tracking_ang_vel = 1.25#5
+            lin_vel_z = -0.2
+            ang_vel_xy = -0.05
             orientation = -5.0#-0.5
-            torques = -0.00001#-0.0002
+            torques = -2.5e-05#-0.00001#-0.0002
             dof_vel = -0.
             dof_acc = -2.5e-7#-2.5e-8
             base_height = -20.0#-0.2
@@ -117,15 +117,15 @@ class TitaRoughCfg( LeggedRobotCfg ):
             no_moonwalk = -0.0
             object_distance = 2.
             object_distance_l2 = -10
-            object_orientation_distance = 0#2.0
-            base_level = 0.0#-1.0e-3
+            object_orientation_distance = 1.0
+            base_level = 0#-1.0e-3
             no_fly = 1.0 
             hip_angle = 0#-0.01
 
             feet_distance = -10.0
             survival = 0.1
             wheel_adjustment = 1.0 # 1.0 off
-            leg_symmetry = 10.0
+            leg_symmetry = 1.0#10
             foot_air_spinning = -0.02
 
         only_positive_rewards = False # if true negative total rewards are clipped at zero (avoids early termination problems)
@@ -136,13 +136,13 @@ class TitaRoughCfg( LeggedRobotCfg ):
         base_height_target = 0.35 #0.25
         max_contact_force = 100
 
-        min_feet_distance = 0.57
-        max_feet_distance = 0.60
+        min_feet_distance = 0.52
+        max_feet_distance = 0.62
         nominal_foot_position_tracking_sigma = 0.005
         nominal_foot_position_tracking_sigma_wrt_v = 0.5
-        leg_symmetry_tracking_sigma = 0.01**2
+        leg_symmetry_tracking_sigma = 0.05**2
         foot_x_position_sigma = 0.001
-        object_orientation_tracking_sigma = 0.5**2
+        object_orientation_tracking_sigma = 0.5
 
     class control( LeggedRobotCfg.control ):
         # PD Drive parameters:
@@ -178,7 +178,7 @@ class TitaRoughCfg( LeggedRobotCfg ):
 
 
     class asset( LeggedRobotCfg.asset ):
-        file = '{LOCO_MANI_GYM_ROOT_DIR}/resources/robots/tita_arx/urdf/tita_arx.urdf'
+        file = '{LOCO_MANI_GYM_ROOT_DIR}/resources/robots/tita_arx/urdf/tita_arx-old.urdf'
         name = "tita"
 
         foot_name = "wheel"  #link name
@@ -188,7 +188,7 @@ class TitaRoughCfg( LeggedRobotCfg ):
         leg_joint_name = ["right","left"]
         arm_gripper_name = "gripper_link"
 
-        penalize_contacts_on = ["base","knee","hip"]  #link name
+        penalize_contacts_on = ["base","shin", "arm_link"]  #link name
         terminate_after_contacts_on = []  #link name
         self_collisions = 0 # 1 to disable, 0 to enable...bitwise filter "base","calf","hip","thigh"
         flip_visual_attachments = False
@@ -205,13 +205,13 @@ class TitaRoughCfg( LeggedRobotCfg ):
         clip_observations = 100.
         clip_actions = 100.
 class TitaRoughCfgPPO( LeggedRobotCfgPPO ):
-    seed = 1
+    seed = 42
     class algorithm( LeggedRobotCfgPPO.algorithm ):
         entropy_coef = 0.01
         learning_rate = 1.e-3
     class runner( LeggedRobotCfgPPO.runner ):
         run_name = ''
-        experiment_name = 'tita_0'
+        experiment_name = 'tita_1'
         resume = False
         num_steps_per_env = 24 # per iteration
         max_iterations = 10000

@@ -13,17 +13,21 @@ class TitaRoughCfg( LeggedRobotCfg ):
         env_spacing = 3.  # not used with heightfields/trimeshes 
         send_timeouts = True # send time out information to the algorithm
         episode_length_s = 20 # episode length in seconds
+
     class commands( LeggedRobotCfg.commands ):
         curriculum = False
         max_curriculum = 1.
         num_commands = 4 # default: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
         resampling_time = 10. # time before command are changed[s]
         heading_command = False # if true: compute ang vel command from heading error
+        height_command = False
         class ranges:
             lin_vel_x = [-1.0, 1.0] # min max [m/s]
             lin_vel_y = [-0., 0.]   # min max [m/s]
             ang_vel_yaw = [-0., 1.]    # min max [rad/s]
             heading = [-3.14, 3.14]
+            height = [0.4,0.6]
+
     class terrain( LeggedRobotCfg.env ):
         mesh_type = 'plane' # "heightfield" # none, plane, heightfield or trimesh
         horizontal_scale = 0.1 # [m]
@@ -50,15 +54,15 @@ class TitaRoughCfg( LeggedRobotCfg ):
         slope_treshold = 0.75 # slopes above this threshold will be corrected to vertical surfaces
 
     class init_state( LeggedRobotCfg.init_state ):
-        pos = [0.0, 0.0, 0.34] # x,y,z [m]
+        pos = [0.0, 0.0, 0.3] # x,y,z [m]
         default_joint_angles = { # = target angles [rad] when action = 0.0
             'right_ankle': 0.,   # [rad]
-            'right_knee': -2.1,   # [rad]
-            'right_hip': 1.3 ,  # [rad]
+            'right_knee': -1.5,   # [rad]
+            'right_hip': 0.8 ,  # [rad]
 
             'left_ankle': 0.,   # [rad]
-            'left_knee': -2.1,   # [rad]
-            'left_hip': 1.3 ,  # [rad]
+            'left_knee': -1.5,   # [rad]
+            'left_hip': 0.8,  # [rad]
             
             'arm_joint00':0.,           
             'arm_joint01':0.,
@@ -69,14 +73,14 @@ class TitaRoughCfg( LeggedRobotCfg ):
 
         }
     class goal_ee:
-        local_axis_z_offset = 0.3
-        init_local_cube_object_pos = [0.5,0,0.5]
+        local_axis_z_offset = 0.5
+        init_local_cube_object_pos = [0.5,0,0.35]
         num_commands = 3
         traj_time = [0.6, 1.2]
         hold_time = [0.2, 0.4]
-        collision_upper_limits = [0.3, 0.15, 0.05 - 0.165 + 0.15]
-        collision_lower_limits = [-0.2, -0.15, -0.35 - 0.165 + 0.15]
-        underground_limit = -0.57 + 0.15
+        collision_upper_limits = [0.45, 0.15, 0.35]
+        collision_lower_limits = [0, -0.15, -0.15]
+        underground_limit = -0.3
         num_collision_check_samples = 10
         command_mode = 'cart'
         class ranges:
@@ -84,7 +88,7 @@ class TitaRoughCfg( LeggedRobotCfg ):
             init_pos_l = [0.3, 0.6]
             init_pos_p = [-1 * np.pi / 6, 1 * np.pi / 3]
             init_pos_y = [-1 * np.pi / 4, 1 * np.pi / 4]
-            final_delta_orn = [[-0, 0], [-0, 0], [-0, 0]]
+            final_delta_orn = [[-0.5, 0.5], [-0.5, 0.5], [-0.5, 0.5]] # roll, pitch, yaw (rad)
 
         class init_ranges:
             pos_l = [0.3, 0.5] # min max [m/s]
@@ -95,54 +99,75 @@ class TitaRoughCfg( LeggedRobotCfg ):
         class scales( LeggedRobotCfg.rewards.scales ):
             termination = -0.0
             end = 0
-            tracking_lin_vel = 2.0
-            tracking_ang_vel = 0.5
-            lin_vel_z = -0.1#-0.0
-            ang_vel_xy = -0.1 #-0.0
-            orientation = -0.5
-            torques = -0.0002
+            tracking_lin_vel = 2.0#10.0#2.0
+            tracking_ang_vel = 0.5#0.5
+            lin_vel_z = -0.2
+            ang_vel_xy = -0.05
+            orientation = -5.0#-0.5
+            torques = -0.00001#-0.00001#-0.0002
             dof_vel = -0.
-            dof_acc = -2.5e-8
-            base_height = -1.0#-0.2
+            dof_acc = -2.5e-7#-2.5e-8
+            base_height = -20.0#-0.2
             feet_air_time =  0#1.0
-            collision = -1.
+            collision = -10.
             feet_stumble = -0.0 
             action_rate = -0.01
-            stand_still = -0.1 #0
-            dof_pos_limits =-10.
-            object_distance = 0#2.
-            object_distance_l2 = 0#-10
-            base_level = -1.0e-3
+            stand_still = -1.0
+            dof_pos_limits =-2.
+            no_moonwalk = -0.0
+            object_distance = 2.
+            object_distance_l2 = -10
+            object_orientation_distance = 0#1.0
+            base_level = 0.0#-1.0e-3
+            no_fly = 1.0 
+            hip_angle = 0#-0.01
+
+            feet_distance = 0#-10.0
+            survival = 0#0.1
+            wheel_adjustment = 0#1.0 # 1.0 off
+            leg_symmetry = 0#10.0
+            foot_air_spinning = 0#-0.02
 
         only_positive_rewards = False # if true negative total rewards are clipped at zero (avoids early termination problems)
         tracking_sigma = 0.25 # tracking reward = exp(-error^2/sigma)
-        soft_dof_pos_limit = 1. #0.9 # percentage of urdf limits, values above this limit are penalized
+        soft_dof_pos_limit = 0.9 # percentage of urdf limits, values above this limit are penalized
         soft_dof_vel_limit = 1.
         soft_torque_limit = 1.
-        base_height_target = 0.5 #0.25
+        base_height_target = 0.35 #0.25
         max_contact_force = 100
+
+        min_feet_distance = 0.57
+        max_feet_distance = 0.60
+        nominal_foot_position_tracking_sigma = 0.005
+        nominal_foot_position_tracking_sigma_wrt_v = 0.5
+        leg_symmetry_tracking_sigma = 0.01**2
+        foot_x_position_sigma = 0.001
+        object_orientation_tracking_sigma = 0.5
 
     class control( LeggedRobotCfg.control ):
         # PD Drive parameters:
         control_type = 'P'
         
-        stiffness = {"arm_joint":20,"ankle":10,"knee":10,"hip":10}  # [N*m/rad] inlcudes all joints
-        damping = {"arm_joint":0.2,"ankle":10,"knee":0.2,"hip":0.2}     # [N*m*s/rad] inlcudes all joints
+        stiffness = {"arm_joint":20,"ankle":60,"knee":60,"hip":60}  # [N*m/rad] inlcudes all joints
+        damping = {"arm_joint":0.2,"ankle":1,"knee":1,"hip":1}     # [N*m*s/rad] inlcudes all joints
+        # stiffness = {"arm_joint":60,"ankle":60,"knee":60,"hip":60}  # [N*m/rad] inlcudes all joints
+        # damping = {"arm_joint":1,"ankle":1,"knee":1,"hip":1}     # [N*m*s/rad] inlcudes all joints
         # action scale: target angle = actionScale * action + defaultAngle
         arm_control_type='position'
         arm_stiffness = 20.  #postion control
         arm_damping = 0.5 #postion control
         
-        action_scale = 0.25
+        action_scale = 0.25#0.5
+        action_scale_vel = 8.0 # change to None if use position control to control the wheel, otherwise vel control the wheel
         # decimation: Number of control action updates @ sim DT per policy DT
-        decimation = 4
+        decimation = 5#2
 
     class domain_rand( LeggedRobotCfg.domain_rand ):
-        randomize_friction = False
-        friction_range = [0.2, 1.5]
+        randomize_friction = True
+        friction_range = [0.2, 1.6]#[0.2, 1.5]
         randomize_base_mass = False
-        added_mass_range = [-4., 4.]
-        push_robots = False
+        added_mass_range = [-1.0, 1.0]#[-4., 4.]
+        push_robots = False#True
         push_interval_s = 15
         max_push_vel_xy = 1.
 
@@ -153,7 +178,7 @@ class TitaRoughCfg( LeggedRobotCfg ):
 
 
     class asset( LeggedRobotCfg.asset ):
-        file = '{LOCO_MANI_GYM_ROOT_DIR}/resources/robots/tita/urdf/tita.urdf'
+        file = '{LOCO_MANI_GYM_ROOT_DIR}/resources/robots/tita_arx/urdf/tita_arx-old.urdf'
         name = "tita"
 
         foot_name = "wheel"  #link name
@@ -180,13 +205,13 @@ class TitaRoughCfg( LeggedRobotCfg ):
         clip_observations = 100.
         clip_actions = 100.
 class TitaRoughCfgPPO( LeggedRobotCfgPPO ):
-    seed = 42
+    seed = 1
     class algorithm( LeggedRobotCfgPPO.algorithm ):
         entropy_coef = 0.01
         learning_rate = 1.e-3
     class runner( LeggedRobotCfgPPO.runner ):
         run_name = ''
-        experiment_name = 'tita_0'
+        experiment_name = 'tita'
         resume = False
         num_steps_per_env = 24 # per iteration
         max_iterations = 10000
