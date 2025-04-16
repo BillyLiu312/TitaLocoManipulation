@@ -145,7 +145,7 @@ class TitaRoughCfg( LeggedRobotCfg ):
         nominal_foot_position_tracking_sigma_wrt_v = 0.5
         leg_symmetry_tracking_sigma = 0.01**2
         foot_x_position_sigma = 0.001
-        object_orientation_tracking_sigma = 0.25
+        object_orientation_tracking_sigma = 0.1
         object_tracking_sigma = 0.05
 
     class control( LeggedRobotCfg.control ):
