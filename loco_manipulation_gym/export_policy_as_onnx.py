@@ -14,6 +14,8 @@ from modules import ActorCriticRMA,ActorCriticBarlowTwins
 
 from envs.tita_noarm.tita_noarm_config import TitaNoArmRoughCfg, TitaNoArmRoughCfgPPO
 from envs.tita_noarm.tita_noarm_robot import TitaNoArm
+from envs.tita.tita_config import TitaRoughCfg, TitaRoughCfgPPO
+from envs.tita.tita_robot import Tita
 from termcolor import cprint
 
 def export_policy_as_onnx(args):
@@ -81,5 +83,6 @@ def convert_onnx_to_engine(engine_path):
 
 if __name__ == '__main__':
     task_registry.register("tita_noarm", TitaNoArm, TitaNoArmRoughCfg(), TitaNoArmRoughCfgPPO())
+    task_registry.register("tita", Tita, TitaRoughCfg(), TitaRoughCfgPPO())
     args = get_args()
     export_policy_as_onnx(args)

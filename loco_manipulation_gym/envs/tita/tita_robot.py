@@ -1034,7 +1034,11 @@ class Tita(LeggedRobot):
         self._local_cube_object_pos = torch.zeros((self.num_envs,3),dtype=torch.float,device=self.device)
         self._cube_object_pos = torch.zeros((self.num_envs,3),dtype=torch.float,device=self.device)
 
-
+        env_ids = torch.arange(self.num_envs, device=self.device)
+        self._resample_ee_goal_sphere_once(env_ids)
+        self.ee_start_sphere = self.ee_goal_sphere.clone()
+        self.curr_ee_goal_sphere = self.ee_goal_sphere.clone()
+        self.curr_ee_goal_cart = self.sphere2cart(self.curr_ee_goal_sphere)
         
 
         assert(self.cfg.goal_ee.command_mode in ['cart', 'sphere'])
