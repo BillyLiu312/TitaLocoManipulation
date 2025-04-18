@@ -70,12 +70,12 @@ class TitaNoArmRoughCfg( LeggedRobotCfg ):
         class scales( LeggedRobotCfg.rewards.scales ):
             termination = -0.0
             end = 0
-            tracking_lin_vel = 10.0#2.0
-            tracking_ang_vel = 5.#0.5
+            tracking_lin_vel = 1.0#2.0
+            tracking_ang_vel = 1.25#0.5
             lin_vel_z = -0.2#-0.0
             ang_vel_xy = -0.05 #-0.0
             orientation = -5.0#-0.5
-            torques = -0.00001#-0.0002
+            torques = -2.5e-05#-0.0002
             dof_vel = -0.
             dof_acc = -2.5e-7#-2.5e-8
             base_height = -20.0#-0.2
@@ -90,10 +90,11 @@ class TitaNoArmRoughCfg( LeggedRobotCfg ):
             no_fly = 1.0 
             hip_angle = 0#-0.01
 
-            feet_distance = -10.0
+            feet_distance = -0.0
             survival = 0.1
             wheel_adjustment = 1.0 # 1.0 off
-            leg_symmetry = 10.0
+            leg_symmetry_y = 1.0#10
+            leg_symmetry_x = 1.0
             foot_air_spinning = -0.02
 
         only_positive_rewards = False # if true negative total rewards are clipped at zero (avoids early termination problems)
@@ -104,8 +105,8 @@ class TitaNoArmRoughCfg( LeggedRobotCfg ):
         base_height_target = 0.35 #0.25
         max_contact_force = 100
 
-        min_feet_distance = 0.57
-        max_feet_distance = 0.60
+        min_feet_distance = 0.52
+        max_feet_distance = 0.62
         nominal_foot_position_tracking_sigma = 0.005
         nominal_foot_position_tracking_sigma_wrt_v = 0.5
         leg_symmetry_tracking_sigma = 0.01**2
@@ -178,7 +179,7 @@ class TitaNoArmRoughCfgPPO( LeggedRobotCfgPPO ):
         experiment_name = 'tita_noarm'
         resume = False
         num_steps_per_env = 24 # per iteration
-        max_iterations = 5000
+        max_iterations = 10000
         save_interval =100
         load_run = -1
         checkpoint = -1

@@ -1208,13 +1208,20 @@ class TitaNoArm(LeggedRobot):
         reward = incline_x * wheel_x_mean > 0
         return reward
 
-    def _reward_leg_symmetry(self):
+    def _reward_leg_symmetry_y(self):
         foot_positions_base = self.foot_positions - \
                             (self.base_position).unsqueeze(1).repeat(1, len(self.feet_indices), 1)
         for i in range(len(self.feet_indices)):
             foot_positions_base[:, i, :] = quat_rotate_inverse(self.base_quat, foot_positions_base[:, i, :] )
-        leg_symmetry_err = (abs(foot_positions_base[:,0,0]-foot_positions_base[:,1,0]))
-        # print(foot_positions_base[1,:,0])
+        leg_symmetry_err = (abs(foot_positions_base[:,0,1])-abs(foot_positions_base[:,1,1]))
+        return torch.exp(-(leg_symmetry_err ** 2)/ self.cfg.rewards.leg_symmetry_tracking_sigma)
+
+    def _reward_leg_symmetry_x(self):
+        foot_positions_base = self.foot_positions - \
+                            (self.base_position).unsqueeze(1).repeat(1, len(self.feet_indices), 1)
+        for i in range(len(self.feet_indices)):
+            foot_positions_base[:, i, :] = quat_rotate_inverse(self.base_quat, foot_positions_base[:, i, :] )
+        leg_symmetry_err = abs(foot_positions_base[:,0,0]-foot_positions_base[:,1,0])
         return torch.exp(-(leg_symmetry_err ** 2)/ self.cfg.rewards.leg_symmetry_tracking_sigma)
 
     def _reward_foot_air_spinning(self):

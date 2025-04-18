@@ -100,6 +100,7 @@ class Tita(LeggedRobot):
         self.base_lin_vel[:] = quat_rotate_inverse(self.base_quat, self.root_states[:, 7:10])
         self.base_ang_vel[:] = quat_rotate_inverse(self.base_quat, self.root_states[:, 10:13])
         self.projected_gravity[:] = quat_rotate_inverse(self.base_quat, self.gravity_vec)
+        self._compute_feet_states()
 
         self._post_physics_step_callback()
         self.update_curr_ee_goal()
@@ -1255,12 +1256,12 @@ class Tita(LeggedRobot):
         self.feet_state = self.rigid_body_states[:, self.feet_indices, :]
         self.last_feet_air_time = self.feet_air_time * self.first_contact + self.last_feet_air_time * ~self.first_contact
         self.feet_air_time *= ~self.contact_filt
-        if self._include_feet_height_rewards:
-            self.last_max_feet_height = self.current_max_feet_height * self.first_contact + self.last_max_feet_height * ~self.first_contact
-            self.current_max_feet_height *= ~self.contact_filt
-            self.feet_height = self.feet_state[:, :, 2] - self._get_heights_below_foot()
-            self.current_max_feet_height = torch.max(self.current_max_feet_height,
-                                                     self.feet_height)
+        # if self._include_feet_height_rewards:
+        #     self.last_max_feet_height = self.current_max_feet_height * self.first_contact + self.last_max_feet_height * ~self.first_contact
+        #     self.current_max_feet_height *= ~self.contact_filt
+        #     self.feet_height = self.feet_state[:, :, 2] - self._get_heights_below_foot()
+        #     self.current_max_feet_height = torch.max(self.current_max_feet_height,
+        #                                              self.feet_height)
         contact = self.contact_forces[:, self.feet_indices, 2] > 1.
         # Need to filter the contacts because the contact reporting of PhysX is unreliable on meshes
         self.contact_filt = torch.logical_or(contact, self.last_contacts)
