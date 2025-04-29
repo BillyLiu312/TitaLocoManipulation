@@ -10,14 +10,14 @@ class TitaRoughCfg( LeggedRobotCfg ):
         num_propriceptive_obs = num_observations
         symmetric = False  #true :  set num_privileged_obs = None;    false: num_privileged_obs = observations + 187 ,set "terrain.measure_heights" to true
         num_privileged_obs = num_observations + 187 # if not None a priviledge_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise 
-        num_actions = 12
+        num_actions = 8
         env_spacing = 3.  # not used with heightfields/trimeshes 
         send_timeouts = True # send time out information to the algorithm
         episode_length_s = 20 # episode length in seconds
 
     class commands( LeggedRobotCfg.commands ):
         curriculum = False
-        max_curriculum = 3.
+        max_curriculum = 1.
         num_commands = 4 # default: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
         resampling_time = 10. # time before command are changed[s]
         heading_command = False # if true: compute ang vel command from heading error
@@ -57,14 +57,6 @@ class TitaRoughCfg( LeggedRobotCfg ):
     class init_state( LeggedRobotCfg.init_state ):
         pos = [0.0, 0.0, 0.3] # x,y,z [m]
         default_joint_angles = { # = target angles [rad] when action = 0.0
-            'right_ankle': 0.,   # [rad]
-            'right_knee': -1.5,   # [rad]
-            'right_hip': 0.8 ,  # [rad]
-
-            'left_ankle': 0.,   # [rad]
-            'left_knee': -1.5,   # [rad]
-            'left_hip': 0.8,  # [rad]
-            
             'arm_joint00':0.,           
             'arm_joint01':0.,
             'arm_joint02':0.,
@@ -103,35 +95,35 @@ class TitaRoughCfg( LeggedRobotCfg ):
             end = 0
             tracking_lin_vel = 1#10.0#2.0
             tracking_ang_vel = 1.25#5
-            lin_vel_z = -0.2
-            ang_vel_xy = -0.05
+            lin_vel_z = 0#-0.2
+            ang_vel_xy = 0#-0.05
             orientation = -5.0#-0.5
             torques = -2.5e-05#-0.00001#-0.0002
             dof_vel = -0.
             dof_acc = -2.5e-7#-2.5e-8
-            base_height = -20.0#-0.2
+            base_height = 0#-20.0#-0.2
             feet_air_time =  0#1.0
             collision = -10.
-            feet_stumble = -0.0 
+            feet_stumble = 0#-0.0 
             action_rate = -0.01
-            stand_still = -1.0
+            stand_still = 0#-1.0
             dof_pos_limits =-2.
             no_moonwalk = -0.0
             object_distance = 2.
             object_distance_l2 = -15
-            object_orientation_distance = 5#2.#1.0
+            object_orientation_distance = 2.#1.0
             object_orientation_distance_l2 = -0.5
             no_pitch = 0#1.0
             no_roll = 0#1.0
-            no_fly = 1.0 
+            no_fly = 0#1.0 
             hip_angle = 0#-0.01
 
             feet_distance = 0#-10.0
             survival = 0.1
-            wheel_adjustment = 1.0 # 1.0 off
-            leg_symmetry_y = 1.0#10
-            leg_symmetry_x = 1.0
-            foot_air_spinning = -0.02
+            wheel_adjustment = 0#1.0 # 1.0 off
+            leg_symmetry_y = 0#1.0#10
+            leg_symmetry_x = 0#1.0
+            foot_air_spinning = 0#-0.02
 
         only_positive_rewards = False # if true negative total rewards are clipped at zero (avoids early termination problems)
         tracking_sigma = 0.25 # tracking reward = exp(-error^2/sigma)
@@ -151,11 +143,6 @@ class TitaRoughCfg( LeggedRobotCfg ):
         object_tracking_sigma = 0.05
         no_pitch_sigma = 0.1 ** 2
         no_roll_sigma = 0.1 ** 2
-
-    class noise( LeggedRobotCfg.noise ):
-        class noise_scales( LeggedRobotCfg.noise.noise_scales ):
-            gripper = 0.1
-
 
     class control( LeggedRobotCfg.control ):
         # PD Drive parameters:
@@ -191,17 +178,15 @@ class TitaRoughCfg( LeggedRobotCfg ):
 
 
     class asset( LeggedRobotCfg.asset ):
-        file = '{LOCO_MANI_GYM_ROOT_DIR}/resources/robots/tita_arx/urdf/tita_arx.urdf'
+        file = '{LOCO_MANI_GYM_ROOT_DIR}/resources/robots/tita_simple/urdf/tita_simple.urdf'
         name = "tita"
 
         foot_name = "wheel"  #link name
         arm_link_name = ["arm"]
         arm_joint_name = ["arm_joint"]
-        wheel_joint_name =[ "ankle"] #wheel joints name, joint name
-        leg_joint_name = ["right","left"]
         arm_gripper_name = "gripper_link"
 
-        penalize_contacts_on = ["base","shin", "arm_link"]  #link name
+        penalize_contacts_on = ["base", "arm_link"]  #link name
         terminate_after_contacts_on = []  #link name
         self_collisions = 0 # 1 to disable, 0 to enable...bitwise filter "base","calf","hip","thigh"
         flip_visual_attachments = False

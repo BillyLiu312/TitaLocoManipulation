@@ -847,7 +847,7 @@ class TitaNoArm(LeggedRobot):
             self.env_origins[:, 2] = 0.
 
     def _parse_cfg(self, cfg):
-        self.dt = self.cfg.control.decimation * self.sim_params.dt
+        self.dt = self.cfg.control.decimation * self.sim_params.dt #sim_params.dt=0.005
         self.obs_scales = self.cfg.normalization.obs_scales
         self.reward_scales = class_to_dict(self.cfg.rewards.scales)
         self.command_ranges = class_to_dict(self.cfg.commands.ranges)

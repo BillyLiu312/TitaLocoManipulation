@@ -182,16 +182,16 @@
 
     <!-- arm -->
   <joint name="trunk_arm_joint_base_0" type="fixed" dont_collapse="true" >
-    <origin xyz="0.0 0 0.1" rpy="0 0 0" />
+    <origin xyz="0.018 0 0.072" rpy="0 0 0" />
     <parent link="base_link" />
     <child link="arm_link00" />
     <axis xyz="0 0 0" />
   </joint>
   <link name="arm_link00">
     <inertial>
-      <origin xyz="-2.9972E-05 3.056E-05 0.027301" rpy="0 0 0"/>
-      <mass value="0.44038"/>
-      <inertia ixx="0.00017" ixy="0.00000" ixz="0.00000" iyy="0.00018" iyz="0.00000" izz="0.00016"/>
+      <origin xyz="-0.000133594636558835 6.67198653031112E-05 0.0316719411200413" rpy="0 0 0" />
+      <mass value="0.422721353715926" />
+      <inertia ixx="0.00019" ixy="0" ixz="0" iyy="0.00019" iyz="0" izz="0.00020" />
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0" />
@@ -199,7 +199,7 @@
         <mesh filename="../meshes/arm_base.STL" />
       </geometry>
       <material name="">
-                <color rgba="0.75294 0.75294 0.75294 1"/>
+        <color rgba="0.898039215686275 0.917647058823529 0.929411764705882 1" />
       </material>
     </visual>
     <collision>
@@ -211,9 +211,9 @@
   </link>
   <link name="arm_link01">
     <inertial>
-      <origin xyz="0.0060953 -0.0042968 0.017959" rpy="0 0 0"/>
-      <mass value="0.060835"/>
-      <inertia ixx="0.00008" ixy="0.00000" ixz="0.00001" iyy="0.00003" iyz="0.00000" izz="0.00007"/>
+      <origin xyz="0.00503954826792913 -0.00774070193988318 0.0208969420816373" rpy="0 0 0" />
+      <mass value="0.0968040209395549" />
+      <inertia ixx="0.00011" ixy="-0.00001" ixz="0.00001" iyy="0.00005" iyz="-0.00001" izz="0.00010"/>
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0" />
@@ -221,7 +221,7 @@
         <mesh filename="../meshes/link1.STL" />
       </geometry>
       <material name="">
-        <color rgba="0.75294 0.75294 0.75294 1"/>
+        <color rgba="0.564705882352941 0.564705882352941 0.564705882352941 1" />
       </material>
     </visual>
     <collision>
@@ -232,7 +232,7 @@
     </collision>
   </link>
   <joint name="arm_joint00" type="revolute">
-    <origin xyz="0 0 0.0603" rpy="0 0 0"/>
+    <origin xyz="0 0 0.0565" rpy="0 0 0" />
     <parent link="arm_link00" />
     <child link="arm_link01" />
     <axis xyz="0 0 1" />
@@ -241,9 +241,9 @@
   <link
     name="arm_link02">
     <inertial>
-      <origin xyz="-0.13238 0.0022038 0.00011179" rpy="0 0 0"/>
-      <mass value="1.0733"/>
-      <inertia ixx="0.00050" ixy="0.00000" ixz="-0.00004" iyy="0.01596" iyz="0.00000" izz="0.01602"/>
+      <origin xyz="-0.129772605589326 -0.00135280906897206 -1.25530093963711E-05" rpy="0 0 0" />
+      <mass value="1.11872105871019" />
+      <inertia ixx="0.00058" ixy="0.00008" ixz="0.00000" iyy="0.01624" iyz="0.00000" izz="0.01621" />
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0" />
@@ -251,7 +251,7 @@
         <mesh filename="../meshes/link2.STL" />
       </geometry>
       <material name="">
-        <color rgba="0.75294 0.75294 0.75294 1"/>
+        <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
       </material>
     </visual>
     <collision>
@@ -262,7 +262,7 @@
     </collision>
   </link>
   <joint name="arm_joint01" type="revolute">
-    <origin xyz="0.02 0 0.0402" rpy="0 0 0" />
+    <origin xyz="0.02 0 0.047" rpy="0 0 0" />
     <parent link="arm_link01" />
     <child link="arm_link02" />
     <axis xyz="0 1 0" />
@@ -270,9 +270,9 @@
   </joint>
   <link name="arm_link03">
     <inertial>
-      <origin xyz="0.1872 -0.00030568 -0.051483" rpy="0 0 0"/>
-      <mass value="0.4994"/>
-      <inertia ixx="0.00033" ixy="-0.00006" ixz="-0.00039" iyy="0.00387" iyz="0.00001" izz="0.00383"/>
+      <origin xyz="0.161808413550856 0.00117234812671152 -0.0545500014865948" rpy="0 0 0" />
+      <mass value="0.840824525877169" />
+      <inertia  ixx="0.00082" ixy="0.00008" ixz="-0.00074" iyy="0.00849" iyz="0.00001" izz="0.00834"/>
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0" />
@@ -280,7 +280,7 @@
         <mesh filename="../meshes/link3.STL" />
       </geometry>
       <material name="">
-        <color rgba="0.75294 0.75294 0.75294 1"/>
+        <color rgba="0.898039215686275 0.917647058823529 0.929411764705882 1" />
       </material>
     </visual>
     <collision>
@@ -299,9 +299,9 @@
   </joint>
   <link name="arm_link04">
     <inertial>
-      <origin xyz="0.038888 0.0029517 -0.035328" rpy="0 0 0"/>
-      <mass value="0.080971"/>
-      <inertia ixx="0.00013" ixy="-0.00001" ixz="-0.00006" iyy="0.00016" iyz="0.00001" izz="0.00010"/>
+      <origin xyz="0.0417509911034941 0.00542364535604879 -0.0333698322632074" rpy="0 0 0" />
+      <mass value="0.124324803309629" />
+      <inertia ixx="0.00022" ixy="-0.00002" ixz="-0.00009" iyy="0.00025" iyz="0.00002" izz="0.00017" />
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0" />
@@ -309,7 +309,7 @@
         <mesh filename="../meshes/link4.STL" />
       </geometry>
       <material name="">
-        <color rgba="0.89804 0.91765 0.92941 1"/>
+        <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
       </material>
     </visual>
     <collision>
@@ -320,7 +320,7 @@
     </collision>
   </link>
   <joint name="arm_joint03" type="revolute">
-    <origin xyz="0.245 0 -0.056" rpy="0 0 0"/>
+    <origin xyz="0.245 -5E-05 -0.06" rpy="0 0 0" />
     <parent link="arm_link03" />
     <child link="arm_link04" />
     <axis xyz="0 1 0" />
@@ -328,9 +328,9 @@
   </joint>
   <link name="arm_link05">
     <inertial>
-      <origin xyz="0.0028996 3.1583E-05 0.052619" rpy="0 0 0"/>
-      <mass value="0.60236"/>
-      <inertia ixx="0.00072" ixy="0.00000" ixz="0.00005" iyy="0.00069" iyz="0.00000" izz="0.00021"/>
+      <origin xyz="-8.34347586788076E-05 -1.54277362126536E-05 0.0522159141095905" rpy="0 0 0" />
+      <mass value="0.636013398718113" />
+      <inertia ixx="0.00084" ixy="0" ixz="0" iyy="0.0004" iyz="1E-05" izz="0.00037" />
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0" />
@@ -338,7 +338,7 @@
         <mesh filename="../meshes/link5.STL" />
       </geometry>
       <material name="">
-        <color rgba="0.75294 0.75294 0.75294 1"/>
+        <color rgba="0.698039215686274 0.698039215686274 0.698039215686274 1" />
       </material>
     </visual>
     <collision>
@@ -349,7 +349,7 @@
     </collision>
   </link>
   <joint name="arm_joint04" type="revolute">
-    <origin xyz="0.06575 -0.001 -0.0825" rpy="0 0 0"/>
+    <origin xyz="0.073914 5E-05 -0.083391" rpy="0 0 0" />
     <parent link="arm_link04" />
     <child link="arm_link05" />
     <axis xyz="0 0 1" />
@@ -357,9 +357,9 @@
   </joint>
   <link name="gripper_link">
     <inertial>
-      <origin xyz="0.0448060032633747 4.61631715961057E-05 -0.000190936703812095" rpy="0 0 0"/>
-      <mass value="0.6000"/>
-      <inertia ixx="0.00029" ixy="0.00000" ixz="0.00000" iyy="0.00028" iyz="-0.00001" izz="0.00045"/>
+      <origin xyz="0.0507223791682477 -4.87718325388323E-05 5.11083473064E-05" rpy="0 0 0" />
+      <mass value="0.562622175728676" />
+      <inertia ixx="0.00046" ixy="0" ixz="0" iyy="0.00052" iyz="0" izz="0.00078" />
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0" />
@@ -367,7 +367,7 @@
         <mesh filename="../meshes/link6.STL" />
       </geometry>
       <material name="">
-        <color rgba="0.89804 0.91765 0.92941 1"/>
+        <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1" />
       </material>
     </visual>
     <collision>
@@ -378,7 +378,7 @@
     </collision>
   </link>
   <joint name="arm_joint05" type="revolute">
-    <origin xyz="0.02845 0 0.0825" rpy="-3.1416 0 0"/>
+    <origin xyz="0.025286 0 0.083391" rpy="3.1416 0 0" />
     <parent link="arm_link05" />
     <child link="gripper_link" />
     <axis xyz="1 0 0" />

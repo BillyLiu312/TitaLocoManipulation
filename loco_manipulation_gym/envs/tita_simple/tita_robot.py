@@ -216,13 +216,13 @@ class Tita(LeggedRobot):
                                     self.base_ang_vel  * self.obs_scales.ang_vel, # 3
                                     self.projected_gravity, # 3
                                     self.commands[:, :3] * self.commands_scale, # 3
-                                    self.dof_err * self.obs_scales.dof_pos, # 12
-                                    self.dof_vel * self.obs_scales.dof_vel, # 12
+                                    self.dof_err * self.obs_scales.dof_pos, # 6
+                                    self.dof_vel * self.obs_scales.dof_vel, # 6
                                     self._local_gripper_pos*self.obs_scales.gripper_track, # 3
                                     self.curr_ee_goal_cart*self.obs_scales.gripper_track,  # 3
                                     (self._local_gripper_pos-self.curr_ee_goal_cart)*self.obs_scales.gripper_track, # 3
                                     self.curr_goal_quat*self.obs_scales.gripper_track, # 4
-                                    self.actions # 12
+                                    self.actions # 8
                                     ),dim=-1)
         # add perceptive inputs if not blind
         if self.cfg.terrain.measure_heights:
@@ -525,13 +525,9 @@ class Tita(LeggedRobot):
         noise_vec[9:12] = 0. # commands
         noise_vec[12:24] = noise_scales.dof_pos * noise_level * self.obs_scales.dof_pos
         noise_vec[24:36] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel
-        noise_vec[36:39] = noise_scales.gripper * noise_level * self.obs_scales.gripper_track
-        noise_vec[39:42] = noise_scales.gripper * noise_level * self.obs_scales.gripper_track
-        noise_vec[42:45] = noise_scales.gripper * noise_level * self.obs_scales.gripper_track
-        noise_vec[45:49] = noise_scales.gripper * noise_level * self.obs_scales.gripper_track
-        noise_vec[49:61] = 0. # previous actions
+        noise_vec[36:48] = 0. # previous actions
         if self.cfg.terrain.measure_heights:
-            noise_vec[61:248] = noise_scales.height_measurements* noise_level * self.obs_scales.height_measurements
+            noise_vec[48:235] = noise_scales.height_measurements* noise_level * self.obs_scales.height_measurements
         return noise_vec
 
 
