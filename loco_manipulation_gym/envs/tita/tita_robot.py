@@ -65,6 +65,9 @@ class Tita(LeggedRobot):
         """
         clip_actions = self.cfg.normalization.clip_actions
         self.actions = torch.clip(actions, -clip_actions, clip_actions).to(self.device)
+
+        if self.logging_enabled:
+            self._log_actions(self.actions)
         # step physics and render each frame
         self.render()
         for _ in range(self.cfg.control.decimation):
@@ -82,8 +85,75 @@ class Tita(LeggedRobot):
         self.obs_buf = torch.clip(self.obs_buf, -clip_obs, clip_obs)
         if self.privileged_obs_buf is not None:
             self.privileged_obs_buf = torch.clip(self.privileged_obs_buf, -clip_obs, clip_obs)
+
+        if self.logging_enabled:
+            self._log_step_data(self.obs_buf, self.rew_buf, self.reset_buf)
         return self.obs_buf, self.privileged_obs_buf, self.rew_buf, self.reset_buf, self.extras
 
+    def _log_actions(self, actions):
+        """记录动作数据"""
+        # 将动作转换为numpy数组并存储
+        actions_np = actions.detach().cpu().numpy() if torch.is_tensor(actions) else actions
+        self.log_data['actions'].append(actions_np)
+
+    def _log_step_data(self, obs, rewards, dones):
+        """记录每一步的数据"""
+        # 转换并存储观测数据
+        obs_np = obs.detach().cpu().numpy() if torch.is_tensor(obs) else obs
+        rewards_np = rewards.detach().cpu().numpy() if torch.is_tensor(rewards) else rewards
+        dones_np = dones.detach().cpu().numpy() if torch.is_tensor(dones) else dones
+        
+        self.log_data['obs'].append(obs_np)
+        self.log_data['rewards'].append(rewards_np)
+        self.log_data['dones'].append(dones_np)
+        self.log_data['timesteps'].append(self.current_timestep)
+        self.log_data['episodes'].append(self.current_episode)
+        
+        self.current_timestep += 1
+        
+        # 检查是否episode结束
+        if any(dones_np):
+            self.current_episode += 1
+            self._save_episode_data()  # 可选：保存当前episode数据
+
+    def _save_episode_data(self, episode_num=None):
+        """保存当前episode的数据到文件"""
+        if episode_num is None:
+            episode_num = self.current_episode
+            
+        # 创建保存目录
+        log_dir = os.path.join(LOCO_MANI_GYM_ROOT_DIR, "logs")
+        os.makedirs(log_dir, exist_ok=True)
+        
+        # 准备数据
+        data = {
+            'obs': np.array(self.log_data['obs']),
+            'actions': np.array(self.log_data['actions']),
+            'rewards': np.array(self.log_data['rewards']),
+            'dones': np.array(self.log_data['dones']),
+            'timesteps': np.array(self.log_data['timesteps']),
+            'episodes': np.array(self.log_data['episodes'])
+        }
+        
+        # 保存为npz文件
+        save_path = os.path.join(log_dir, f"episode_{episode_num:04d}.npz")
+        np.savez(save_path, **data)
+        print(f"Saved episode {episode_num} data to {save_path}")
+        
+        # 重置当前episode的日志
+        self._reset_episode_log()
+
+    def _reset_episode_log(self):
+        """重置当前episode的日志"""
+        self.log_data = {
+            'obs': [],
+            'actions': [],
+            'rewards': [],
+            'dones': [],
+            'timesteps': [],
+            'episodes': []
+        }
+    
     def post_physics_step(self):
         """ check terminations, compute observations and rewards
             calls self._post_physics_step_callback() for common computations 
@@ -614,6 +684,18 @@ class Tita(LeggedRobot):
             self.height_points = self._init_height_points()
         self.measured_heights = 0
 
+        self.logging_enabled = True  # 可以配置是否启用日志
+        self.log_data = {
+            'obs': [],
+            'actions': [],
+            'rewards': [],
+            'dones': [],
+            'timesteps': [],
+            'episodes': []
+        }
+        self.current_episode = 0
+        self.current_timestep = 0
+
         # random motor lenth
         str_rng = self.cfg.domain_rand.motor_strength_range
         self.motor_strength = (str_rng[1] - str_rng[0]) * torch.rand(2, self.num_envs, self.num_dof, dtype=torch.float, device=self.device, requires_grad=False) + str_rng[0]
@@ -987,6 +1069,9 @@ class Tita(LeggedRobot):
         self.ee_orn = self.rigid_body_states[:, self.hand_index, 3:7]
         self.ee_vel = self.rigid_body_states[:, self.hand_index, 7:]
         self.ee_j_eef = self.whole_body_jacobian[:, self.hand_index, :6, self.arm_indices+6]
+
+        self.ee_orn_euler = torch.zeros(self.num_envs, 3, device=self.device)
+        self.ee_orn_euler = get_euler_xyz(self.ee_orn)
 
         arm_names =[]
         for name in self.cfg.asset.arm_joint_name:

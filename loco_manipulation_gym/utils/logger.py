@@ -32,6 +32,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from collections import defaultdict
 from multiprocessing import Process, Value
+from loco_manipulation_gym import LOCO_MANI_GYM_ROOT_DIR
+import os
 
 class Logger:
     def __init__(self, dt):
@@ -63,7 +65,7 @@ class Logger:
         self.plot_process.start()
 
     def _plot(self):
-        nb_rows = 3
+        nb_rows = 5#3
         nb_cols = 3
         fig, axs = plt.subplots(nb_rows, nb_cols)
         for key, value in self.state_log.items():
@@ -116,14 +118,62 @@ class Logger:
         # plot torque/vel curves
         a = axs[2, 1]
         if log["dof_vel"]!=[] and log["dof_torque"]!=[]: a.plot(log["dof_vel"], log["dof_torque"], 'x', label='measured')
-        a.set(xlabel='Joint vel [rad/s]', ylabel='Joint Torque [Nm]', title='Torque/velocity curves')
+        a.set(xlabel='Joint vel [rad/s]', ylabel='Joint Torque [Nm]', title='Torque velocity curves')
         a.legend()
         # plot torques
         a = axs[2, 2]
         if log["dof_torque"]!=[]: a.plot(time, log["dof_torque"], label='measured')
         a.set(xlabel='time [s]', ylabel='Joint Torque [Nm]', title='Torque')
         a.legend()
-        plt.show()
+        # plot ee pos
+        pos_labels = ['X', 'Y', 'Z']
+        for i in range(3): # 分别绘制X、Y、Z方向
+            a = axs[3, i]
+            if log[f"ee_goal_{pos_labels[i].lower()}"]: 
+                a.plot(time, log[f"ee_goal_{pos_labels[i].lower()}"], label='Goal Position')
+            if log[f"ee_pos_{pos_labels[i].lower()}"]: 
+                a.plot(time, log[f"ee_pos_{pos_labels[i].lower()}"], label='End Effector Position')
+            a.set(xlabel='time [s]', ylabel=f'{pos_labels[i]} Position [m]', title=f'Position {pos_labels[i]}')
+            a.legend()
+        # plot ee orn
+        orn_labels = ['Roll', 'Pitch', 'Yaw']
+        for i in range(3): # 分别绘制Roll、Pitch、Yaw方向
+            a = axs[4, i]
+            if log[f"orn_goal_{orn_labels[i].lower()[0]}"]: 
+                a.plot(time, log[f"orn_goal_{orn_labels[i].lower()[0]}"], label='End Effector Orientation')
+            if log[f"ee_orn_{orn_labels[i].lower()[0]}"]: 
+                a.plot(time, log[f"ee_orn_{orn_labels[i].lower()[0]}"], label='Goal Orientation')
+            a.set(xlabel='time [s]', ylabel=f'{orn_labels[i]} [rad]', title=f'{orn_labels[i]} Orientation')
+            a.legend()
+            
+        # plt.show()
+        plot_dir = os.path.join(LOCO_MANI_GYM_ROOT_DIR, 'plots')
+        os.makedirs(plot_dir, exist_ok=True)  # 创建目录如果不存在
+
+        for row in range(nb_rows):
+            for col in range(nb_cols):
+                ax = axs[row, col]
+                title = ax.get_title()
+                if title:  # 如果有标题才保存
+                    fig_sub = plt.figure(figsize=(8, 6))
+                    new_ax = fig_sub.add_subplot(111)
+                    lines = ax.get_lines()
+                    for line in lines:
+                        new_ax.plot(line.get_xdata(), line.get_ydata(),
+                                    color=line.get_color(), linestyle=line.get_linestyle(),
+                                    linewidth=line.get_linewidth(), label=line.get_label())
+                    new_ax.set_xlabel(ax.get_xlabel())
+                    new_ax.set_ylabel(ax.get_ylabel())
+                    new_ax.set_title(title)
+                    new_ax.legend()
+                    new_ax.grid(True)
+
+                    filename = f"{plot_dir}/{title.replace(' ', '_').lower()}.png"
+                    fig_sub.savefig(filename, bbox_inches='tight')
+                    plt.close(fig_sub)
+
+        plt.close(fig)
+        print("All figures saved!")
 
     def print_rewards(self):
         print("Average rewards per second:")
