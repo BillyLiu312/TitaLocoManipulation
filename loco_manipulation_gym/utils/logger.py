@@ -34,6 +34,7 @@ from collections import defaultdict
 from multiprocessing import Process, Value
 from loco_manipulation_gym import LOCO_MANI_GYM_ROOT_DIR
 import os
+import json
 
 class Logger:
     def __init__(self, dt):
@@ -45,6 +46,14 @@ class Logger:
 
     def log_state(self, key, value):
         self.state_log[key].append(value)
+
+    def save_logs(self, directory=LOCO_MANI_GYM_ROOT_DIR):
+        """Save the state and reward logs to files."""
+        os.makedirs(directory, exist_ok=True)
+        with open(os.path.join(directory, 'state_log.json'), 'w') as f:
+            json.dump({k: v for k, v in self.state_log.items()}, f, cls=NumpyEncoder)
+        with open(os.path.join(directory, 'rew_log.json'), 'w') as f:
+            json.dump({k: v for k, v in self.rew_log.items()}, f)
 
     def log_states(self, dict):
         for key, value in dict.items():
@@ -140,10 +149,10 @@ class Logger:
         for i in range(3): # 分别绘制Roll、Pitch、Yaw方向
             a = axs[4, i]
             if log[f"orn_goal_{orn_labels[i].lower()[0]}"]: 
-                a.plot(time, log[f"orn_goal_{orn_labels[i].lower()[0]}"], label='End Effector Orientation')
+                a.plot(time, log[f"orn_goal_{orn_labels[i].lower()[0]}"], label='Goal Orientation')
             if log[f"ee_orn_{orn_labels[i].lower()[0]}"]: 
-                a.plot(time, log[f"ee_orn_{orn_labels[i].lower()[0]}"], label='Goal Orientation')
-            a.set(xlabel='time [s]', ylabel=f'{orn_labels[i]} [rad]', title=f'{orn_labels[i]} Orientation')
+                a.plot(time, log[f"ee_orn_{orn_labels[i].lower()[0]}"], label='End Effector Orientation')
+            a.set(xlabel='time [s]', ylabel=f'{orn_labels[i]} [rad]', title=f'Orientation {orn_labels[i]}')
             a.legend()
             
         # plt.show()
@@ -185,3 +194,9 @@ class Logger:
     def __del__(self):
         if self.plot_process is not None:
             self.plot_process.kill()
+
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NumpyEncoder, self).default(obj)

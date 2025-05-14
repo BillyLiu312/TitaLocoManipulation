@@ -6,7 +6,7 @@ import numpy as np
 class TitaRoughCfg( LeggedRobotCfg ):
     class env(LeggedRobotCfg.env):
         num_envs = 4096
-        num_observations = 61
+        num_observations = 62
         num_propriceptive_obs = num_observations
         symmetric = False  #true :  set num_privileged_obs = None;    false: num_privileged_obs = observations + 187 ,set "terrain.measure_heights" to true
         num_privileged_obs = num_observations + 187 # if not None a priviledge_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise 

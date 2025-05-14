@@ -290,7 +290,8 @@ class Tita(LeggedRobot):
                                     self.dof_vel * self.obs_scales.dof_vel, # 12
                                     self._local_gripper_pos*self.obs_scales.gripper_track, # 3
                                     self.curr_ee_goal_cart*self.obs_scales.gripper_track,  # 3
-                                    (self._local_gripper_pos-self.curr_ee_goal_cart)*self.obs_scales.gripper_track, # 3
+                                    # (self._local_gripper_pos-self.curr_ee_goal_cart)*self.obs_scales.gripper_track, # 3
+                                    self.abs_ee_quat*self.obs_scales.gripper_track, # 4
                                     self.curr_goal_quat*self.obs_scales.gripper_track, # 4
                                     self.actions # 12
                                     ),dim=-1)
@@ -597,11 +598,11 @@ class Tita(LeggedRobot):
         noise_vec[24:36] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel
         noise_vec[36:39] = noise_scales.gripper * noise_level * self.obs_scales.gripper_track
         noise_vec[39:42] = noise_scales.gripper * noise_level * self.obs_scales.gripper_track
-        noise_vec[42:45] = noise_scales.gripper * noise_level * self.obs_scales.gripper_track
-        noise_vec[45:49] = noise_scales.gripper * noise_level * self.obs_scales.gripper_track
-        noise_vec[49:61] = 0. # previous actions
+        noise_vec[42:46] = noise_scales.gripper * noise_level * self.obs_scales.gripper_track
+        noise_vec[46:50] = noise_scales.gripper * noise_level * self.obs_scales.gripper_track
+        noise_vec[50:62] = 0. # previous actions
         if self.cfg.terrain.measure_heights:
-            noise_vec[61:248] = noise_scales.height_measurements* noise_level * self.obs_scales.height_measurements
+            noise_vec[62:248] = noise_scales.height_measurements* noise_level * self.obs_scales.height_measurements
         return noise_vec
 
 
@@ -684,7 +685,7 @@ class Tita(LeggedRobot):
             self.height_points = self._init_height_points()
         self.measured_heights = 0
 
-        self.logging_enabled = True  # 可以配置是否启用日志
+        self.logging_enabled = False  # 可以配置是否启用日志
         self.log_data = {
             'obs': [],
             'actions': [],
@@ -1070,8 +1071,9 @@ class Tita(LeggedRobot):
         self.ee_vel = self.rigid_body_states[:, self.hand_index, 7:]
         self.ee_j_eef = self.whole_body_jacobian[:, self.hand_index, :6, self.arm_indices+6]
 
+        self.abs_ee_quat = torch.zeros(self.num_envs, 4, device=self.device)
         self.ee_orn_euler = torch.zeros(self.num_envs, 3, device=self.device)
-        self.ee_orn_euler = get_euler_xyz(self.ee_orn)
+        
 
         arm_names =[]
         for name in self.cfg.asset.arm_joint_name:
@@ -1177,6 +1179,8 @@ class Tita(LeggedRobot):
         self.base_align_z_axis = torch.cat([self.root_states[:, :2], self.local_axis_z], dim=1)
 
         self.base_quat = self.root_states[:, 3:7]
+        self.abs_ee_quat = quat_mul(self.base_quat, self.ee_orn)
+        self.ee_orn_euler = self.quat2euler(self.abs_ee_quat)
         base_yaw = get_euler_xyz(self.base_quat)[2]
         self.base_yaw_fixed = wrap_to_pi(base_yaw).view(self.num_envs,1)
         self.base_yaw_quat[:] = quat_from_euler_xyz(torch.tensor(0), torch.tensor(0), base_yaw)
@@ -1186,7 +1190,7 @@ class Tita(LeggedRobot):
         self.base_align_z_axis[:,:2] = self.root_states[:, :2]
 
     def compute_angle_diff(self):
-        current_orn = self.ee_orn.clone()
+        current_orn = self.abs_ee_quat.clone()
         target_orn = self.curr_goal_quat.clone()
         
         current_orn = current_orn / torch.norm(current_orn, dim=1, keepdim=True)
@@ -1215,6 +1219,28 @@ class Tita(LeggedRobot):
         quat = quat_from_euler_xyz(euler[:,0], euler[:,1], euler[:,2])
         return quat
 
+    def quat2euler(self, q):
+        qx, qy, qz, qw = 0, 1, 2, 3
+
+        # roll (x-axis rotation)
+        sinr_cosp = 2.0 * (q[:, qw] * q[:, qx] + q[:, qy] * q[:, qz])
+        cosr_cosp = q[:, qw] * q[:, qw] - q[:, qx] * q[:, qx] - q[:, qy] * q[:, qy] + q[:, qz] * q[:, qz]
+        roll = torch.atan2(sinr_cosp, cosr_cosp)
+
+        # pitch (y-axis rotation)
+        sinp = 2.0 * (q[:, qw] * q[:, qy] - q[:, qz] * q[:, qx])
+        pitch = torch.where(torch.abs(sinp) >= 1, 
+                            torch.sign(sinp) * np.pi / 2.0,
+                            torch.asin(sinp))
+
+        # yaw (z-axis rotation)
+        siny_cosp = 2.0 * (q[:, qw] * q[:, qz] + q[:, qx] * q[:, qy])
+        cosy_cosp = q[:, qw] * q[:, qw] + q[:, qx] * q[:, qx] - q[:, qy] * q[:, qy] - q[:, qz] * q[:, qz]
+        yaw = torch.atan2(siny_cosp, cosy_cosp)
+
+        # 合并为一个形状为 (num_envs, 3) 的张量
+        return torch.stack([roll, pitch, yaw], dim=-1)
+
     def update_curr_ee_goal(self):
         self.refresh_ee_goal_variable()
         t = torch.clip(self.goal_timer / self.traj_timesteps, 0, 1)
@@ -1225,7 +1251,7 @@ class Tita(LeggedRobot):
         mask = dot_product < 0
         self.ee_start_quat[mask] = -self.ee_start_quat[mask]
         self.curr_goal_quat = torch.lerp(self.ee_start_quat, self.ee_goal_quat, t[:, None])
-        self.curr_orn_goal_euler = get_euler_xyz(self.curr_goal_quat)
+        self.curr_orn_goal_euler = self.quat2euler(self.curr_goal_quat)
         self.compute_angle_diff()
 
         self.goal_timer += 1

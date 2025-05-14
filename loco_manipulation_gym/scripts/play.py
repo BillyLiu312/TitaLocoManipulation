@@ -69,9 +69,9 @@ def play(args):
         print('Exported policy as jit script to: ', export_path)
 
     logger = Logger(env.dt)
-    robot_index = 2 # which robot is used for logging
+    robot_index = 0 # which robot is used for logging
     joint_index = 1 # which joint is used for logging
-    stop_state_log = 100 # number of steps before plotting states
+    stop_state_log = 500 # number of steps before plotting states
     stop_rew_log = env.max_episode_length + 1 # number of steps before print average episode rewards
     camera_position = np.array(env_cfg.viewer.pos, dtype=np.float64)
     camera_vel = np.array([1., 1., 0.])
@@ -104,23 +104,24 @@ def play(args):
                     'base_vel_y': env.base_lin_vel[robot_index, 1].item(),
                     'base_vel_z': env.base_lin_vel[robot_index, 2].item(),
                     'base_vel_yaw': env.base_ang_vel[robot_index, 2].item(),
-                    'contact_forces_z': env.contact_forces[robot_index, env.feet_indices, 2].cpu().numpy()#,
-                    # 'ee_goal_x': env.curr_ee_goal_cart[robot_index, 0].item(),
-                    # 'ee_goal_y': env.curr_ee_goal_cart[robot_index, 1].item(),
-                    # 'ee_goal_z': env.curr_ee_goal_cart[robot_index, 2].item(),
-                    # 'ee_pos_x': env._local_gripper_pos[robot_index, 0].item(),
-                    # 'ee_pos_y': env._local_gripper_pos[robot_index, 1].item(),
-                    # 'ee_pos_z': env._local_gripper_pos[robot_index, 2].item(),
-                    # 'orn_goal_r': env.curr_orn_goal_euler[robot_index][0].item(),
-                    # 'orn_goal_p': env.curr_orn_goal_euler[robot_index][1].item(),
-                    # 'orn_goal_y': env.curr_orn_goal_euler[robot_index][2].item(),
-                    # 'ee_orn_r': env.ee_orn_euler[robot_index][0].item(),
-                    # 'ee_orn_p': env.ee_orn_euler[robot_index][1].item(),
-                    # 'ee_orn_y': env.ee_orn_euler[robot_index][2].item()
+                    'contact_forces_z': env.contact_forces[robot_index, env.feet_indices, 2].cpu().numpy(),
+                    'ee_goal_x': env.curr_ee_goal_cart[robot_index, 0].item(),
+                    'ee_goal_y': env.curr_ee_goal_cart[robot_index, 1].item(),
+                    'ee_goal_z': env.curr_ee_goal_cart[robot_index, 2].item(),
+                    'ee_pos_x': env._local_gripper_pos[robot_index, 0].item(),
+                    'ee_pos_y': env._local_gripper_pos[robot_index, 1].item(),
+                    'ee_pos_z': env._local_gripper_pos[robot_index, 2].item(),
+                    'orn_goal_r': env.curr_orn_goal_euler[robot_index, 0].item(),
+                    'orn_goal_p': env.curr_orn_goal_euler[robot_index, 1].item(),
+                    'orn_goal_y': env.curr_orn_goal_euler[robot_index, 2].item(),
+                    'ee_orn_r': env.ee_orn_euler[robot_index, 0].item(),
+                    'ee_orn_p': env.ee_orn_euler[robot_index, 1].item(),
+                    'ee_orn_y': env.ee_orn_euler[robot_index, 2].item()
                 }
             )
         elif i==stop_state_log:
             logger.plot_states()
+            logger.save_logs()
         if  0 < i < stop_rew_log:
             if infos["episode"]:
                 num_episodes = torch.sum(env.reset_buf).item()
