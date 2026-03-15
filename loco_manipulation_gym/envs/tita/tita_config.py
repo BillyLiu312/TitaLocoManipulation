@@ -101,26 +101,26 @@ class TitaRoughCfg( LeggedRobotCfg ):
         class scales( LeggedRobotCfg.rewards.scales ):
             termination = -0.0
             end = 0
-            tracking_lin_vel = 1#10.0#2.0
-            tracking_ang_vel = 1.25#5
-            lin_vel_z = -0.2
-            ang_vel_xy = -0.05
-            orientation = -5.0#-0.5
+            tracking_lin_vel = 1.65#10.0#2.0
+            tracking_ang_vel = 1.4#5
+            lin_vel_z = 0.8
+            ang_vel_xy = 0.4
+            orientation = 6.0#-0.5
             torques = -2.5e-05#-0.00001#-0.0002
-            dof_vel = -0.
+            dof_vel = -0.5e-5 # 0
             dof_acc = -2.5e-7#-2.5e-8
-            base_height = -20.0#-0.2
-            feet_air_time =  0#1.0
+            base_height = 5.0#-0.2
+            feet_air_time =  0. #1.0
             collision = -10.
             feet_stumble = -0.0 
             action_rate = -0.01
-            stand_still = -1.0
+            stand_still = -1.2
             dof_pos_limits =-2.
             no_moonwalk = -0.0
-            object_distance = 2.
-            object_distance_l2 = -15
-            object_orientation_distance = 5#2.#1.0
-            object_orientation_distance_l2 = -0.5
+            object_distance = 3.5
+            object_distance_l2 = 4.5
+            object_orientation_distance = 4.5#1.0
+            object_orientation_distance_l2 = -2
             no_pitch = 0#1.0
             no_roll = 0#1.0
             no_fly = 1.0 
@@ -131,26 +131,37 @@ class TitaRoughCfg( LeggedRobotCfg ):
             wheel_adjustment = 1.0 # 1.0 off
             leg_symmetry_y = 1.0#10
             leg_symmetry_x = 1.0
-            foot_air_spinning = -0.02
+            foot_air_spinning = 0.2
 
         only_positive_rewards = False # if true negative total rewards are clipped at zero (avoids early termination problems)
-        tracking_sigma = 0.25 # tracking reward = exp(-error^2/sigma)
+        
         soft_dof_pos_limit = 0.9 # percentage of urdf limits, values above this limit are penalized
         soft_dof_vel_limit = 1.
         soft_torque_limit = 1.
-        base_height_target = 0.35 #0.25
+        base_height_target = 0.25 #0.25
         max_contact_force = 100
 
         min_feet_distance = 0.52
         max_feet_distance = 0.62
+
+        orientation_sigma = 0.1
+        lin_vel_z_sigma = 0.8
+        ang_vel_sigma = 0.8
+        tracking_ang_vel_sigma = 0.8
+        tracking_lin_vel_sigma = 0.2
+        base_height_sigma = 0.15
+        object_distance_l2_sigma = 0.244
+        foot_air_spinning_sigma = 3.
         nominal_foot_position_tracking_sigma = 0.005
         nominal_foot_position_tracking_sigma_wrt_v = 0.5
         leg_symmetry_tracking_sigma = 0.05**2
         foot_x_position_sigma = 0.001
-        object_orientation_tracking_sigma = 0.1
-        object_tracking_sigma = 0.05
+        object_orientation_tracking_sigma = 0.2
+        object_tracking_sigma = 0.195
         no_pitch_sigma = 0.1 ** 2
         no_roll_sigma = 0.1 ** 2
+
+
 
     class noise( LeggedRobotCfg.noise ):
         class noise_scales( LeggedRobotCfg.noise.noise_scales ):
@@ -162,7 +173,7 @@ class TitaRoughCfg( LeggedRobotCfg ):
         control_type = 'P'
         
         stiffness = {"arm_joint":20,"ankle":30,"knee":30,"hip":30}  # [N*m/rad] inlcudes all joints
-        damping = {"arm_joint":0.2,"ankle":0.5,"knee":0.5,"hip":0.5}     # [N*m*s/rad] inlcudes all joints
+        damping = {"arm_joint":0.2,"ankle":0.45,"knee":0.5,"hip":0.5}     # [N*m*s/rad] inlcudes all joints
         # stiffness = {"arm_joint":60,"ankle":60,"knee":60,"hip":60}  # [N*m/rad] inlcudes all joints
         # damping = {"arm_joint":1,"ankle":1,"knee":1,"hip":1}     # [N*m*s/rad] inlcudes all joints
         # action scale: target angle = actionScale * action + defaultAngle

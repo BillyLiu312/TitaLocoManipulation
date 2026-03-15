@@ -1399,37 +1399,25 @@ class Tita(LeggedRobot):
 
         return torch.stack([qw, qx, qy, qz], dim=-1)
 
-
-
-
-
-
-
-
     #------------ reward functions----------------
     def _reward_lin_vel_z(self):
-        # Penalize z axis base linear velocity
-        return torch.square(self.base_lin_vel[:, 2])
+        # Reward for zero z-axis base linear velocity
+        return torch.exp(-torch.square(self.base_lin_vel[:, 2])/self.cfg.rewards.lin_vel_z_sigma)
     
     def _reward_ang_vel_xy(self):
-        # Penalize xy axes base angular velocity
-        return torch.sum(torch.square(self.base_ang_vel[:, :2]), dim=1)
+        # Reward for zero x and y axis base angular velocity
+        return torch.exp(-torch.sum(torch.square(self.base_ang_vel[:, :2]), dim=1)/self.cfg.rewards.ang_vel_sigma)
     
     def _reward_orientation(self):
-        # Penalize non flat base orientation
-        return torch.sum(torch.square(self.projected_gravity[:, :2]), dim=1)
+        # Reward for upright orientation (gravity aligned with body z axis)
+        orientation_error = 1.0 - torch.abs(self.projected_gravity[:, 2])
+        return torch.exp(-orientation_error / self.cfg.rewards.orientation_sigma)
 
     def _reward_base_height(self):
-        # Penalize base height away from target
+        # Reward for base height close to target
         base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
-        return torch.square(base_height - self.cfg.rewards.base_height_target)
-    
-    # def _reward_base_height(self):
-    #     # Penalize base height away from target
-    #     base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
-    #     height_err = torch.square(self.commands[:,4] - base_height)
-    #     return torch.exp(-height_err / self.cfg.rewards.tracking_sigma)
-    #     # return height_err
+        height_err = torch.square(base_height - self.cfg.rewards.base_height_target)
+        return torch.exp(-height_err / self.cfg.rewards.base_height_sigma)
 
     def _reward_torques(self):
         # Penalize torques
@@ -1440,7 +1428,7 @@ class Tita(LeggedRobot):
     def _reward_dof_vel(self):
         # Penalize dof velocities
         return torch.sum(torch.square(self.dof_vel), dim=1)
-    
+
     def _reward_dof_acc(self):
         # Penalize dof accelerations
         return torch.sum(torch.square((self.last_dof_vel - self.dof_vel) / self.dt), dim=1)
@@ -1481,12 +1469,12 @@ class Tita(LeggedRobot):
     def _reward_tracking_lin_vel(self):
         # Tracking of linear velocity commands (xy axes)
         lin_vel_error = torch.sum(torch.square(self.commands[:, :2] - self.base_lin_vel[:, :2]), dim=1)
-        return torch.exp(-lin_vel_error/self.cfg.rewards.tracking_sigma)
+        return torch.exp(-lin_vel_error/self.cfg.rewards.tracking_lin_vel_sigma)
     
     def _reward_tracking_ang_vel(self):
         # Tracking of angular velocity commands (yaw) 
         ang_vel_error = torch.square(self.commands[:, 2] - self.base_ang_vel[:, 2])
-        return torch.exp(-ang_vel_error/self.cfg.rewards.tracking_sigma)
+        return torch.exp(-ang_vel_error/self.cfg.rewards.tracking_ang_vel_sigma)
 
     def _reward_feet_air_time(self):
         # Reward long steps
@@ -1530,12 +1518,16 @@ class Tita(LeggedRobot):
         #print("_object_distance:",dis_err,"value:",torch.exp(-dis_err/self.cfg.rewards.object_sigma).shape)  #[0.7~3.5]
         return torch.exp(-dis_err/self.cfg.rewards.object_tracking_sigma)
     
+    # def _reward_object_distance_l2(self) -> Tuple[Tensor, Tensor, Tensor]:
+    #     """Penalize for gripper no tracking the object."""
+    #     dis_err = torch.sum(torch.square(self._local_gripper_pos-self.curr_ee_goal), dim=1)
+    #     #dis_err = torch.sum(torch.square(self._gripper_pos-self.robot_root_states[:,0:3]+torch.tensor([0.5, 0.3, 0.4],device=self.device)), dim=1)
+    #     #print("_object_distance:",dis_err,"value:",torch.exp(-dis_err/self.cfg.rewards.object_sigma).shape)  #[0.7~3.5]
+    #     return dis_err
+    
     def _reward_object_distance_l2(self) -> Tuple[Tensor, Tensor, Tensor]:
-        """Penalize for gripper no tracking the object."""
         dis_err = torch.sum(torch.square(self._local_gripper_pos-self.curr_ee_goal), dim=1)
-        #dis_err = torch.sum(torch.square(self._gripper_pos-self.robot_root_states[:,0:3]+torch.tensor([0.5, 0.3, 0.4],device=self.device)), dim=1)
-        #print("_object_distance:",dis_err,"value:",torch.exp(-dis_err/self.cfg.rewards.object_sigma).shape)  #[0.7~3.5]
-        return dis_err
+        return torch.exp(-dis_err/self.cfg.rewards.object_distance_l2_sigma)
 
     def _reward_object_orientation_distance(self):
         """Reward for orientation of the end-effector tracking"""
@@ -1665,7 +1657,13 @@ class Tita(LeggedRobot):
         return torch.exp(-(leg_symmetry_err ** 2)/ self.cfg.rewards.leg_symmetry_tracking_sigma)
 
 
+    # def _reward_foot_air_spinning(self):
+    #     """Penalize ankle joint spinning when feet is not in contact with ground"""
+    #     contact_z = self.contact_forces[:, self.feet_indices, 2] > 0.5
+    #     return torch.sum(torch.square(self.dof_vel[:, [2,5]]) * (~contact_z), dim=1)
+
     def _reward_foot_air_spinning(self):
-        """Penalize ankle joint spinning when feet is not in contact with ground"""
+        """Reward for ankle joint spinning when feet is in contact with ground"""
         contact_z = self.contact_forces[:, self.feet_indices, 2] > 0.5
-        return torch.sum(torch.square(self.dof_vel[:, [2,5]]) * (~contact_z), dim=1)
+        foot_air_spinning_err = torch.sum(torch.square(self.dof_vel[:, [2,5]]) * (~contact_z), dim=1)
+        return torch.exp(-foot_air_spinning_err/self.cfg.rewards.foot_air_spinning_sigma)
