@@ -161,7 +161,14 @@ class TitaRoughCfg( LeggedRobotCfg ):
         no_pitch_sigma = 0.1 ** 2
         no_roll_sigma = 0.1 ** 2
 
-
+        # thresholds for phase training
+        threshold_tracking_lin_vel = 0.65
+        threshold_tracking_ang_vel = 0.6
+        threshold_orientation = 0.8
+        threshold_lin_vel_z = 0.6
+        threshold_base_height = 0.8
+        enable_phase_training = True
+        in_second_phase = False
 
     class noise( LeggedRobotCfg.noise ):
         class noise_scales( LeggedRobotCfg.noise.noise_scales ):
@@ -235,7 +242,7 @@ class TitaRoughCfgPPO( LeggedRobotCfgPPO ):
         learning_rate = 1.e-3
     class runner( LeggedRobotCfgPPO.runner ):
         run_name = ''
-        experiment_name = 'tita_1'
+        experiment_name = 'tita_arx_phase_training'
         resume = False
         num_steps_per_env = 24 # per iteration
         max_iterations = 10000

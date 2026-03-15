@@ -57,6 +57,31 @@ from termcolor import cprint
 class Tita(LeggedRobot):
     cfg:TitaRoughCfg
 
+    def __init__(self, cfg, sim_params, physics_engine, sim_device, headless):
+        self.cfg = cfg
+        self.sim_params = sim_params
+        self.height_samples = None
+        self.debug_viz = False
+        self.init_done = False
+        self._parse_cfg(self.cfg)
+        super().__init__(self.cfg, sim_params, physics_engine, sim_device, headless)
+        
+        self.completed_episodes = []
+        self.max_completed_episodes = 100
+
+        # logging related variables
+        self.key_metrics_history = {
+            'tracking_lin_vel': [],
+            'tracking_ang_vel': [],
+            'orientation': [],
+            'lin_vel_z': [],
+            'base_height': []
+        }
+        
+        # initialize phase training flag
+        if hasattr(cfg.rewards, 'enable_phase_training') and cfg.rewards.enable_phase_training:
+            self.cfg.rewards.in_second_phase = False
+
     def step(self, actions):
         """ Apply actions, simulate, call self.post_physics_step()
 
@@ -243,6 +268,57 @@ class Tita(LeggedRobot):
         # add foot positions and base position
         self.last_foot_positions[env_ids] = self.foot_positions[env_ids]
         self.last_base_position[env_ids] = self.base_position[env_ids]
+
+        # log episode info
+        for env_id in env_ids:
+            
+            for metric in ['tracking_lin_vel', 'tracking_ang_vel', 'orientation', 'lin_vel_z', 'base_height']:
+                if metric in self.episode_sums:
+                    # calculate average for the episode and append to history
+                    episode_avg = self.episode_sums[metric][env_id] / self.max_episode_length_s
+                    self.key_metrics_history[metric].append(episode_avg)
+            
+            for metric in self.key_metrics_history.keys():
+                if len(self.key_metrics_history[metric]) > self.max_completed_episodes:
+                    self.key_metrics_history[metric].pop(0)
+        
+        # use metric averages to determine phase switching
+        if hasattr(self.cfg.rewards, 'enable_phase_training') and self.cfg.rewards.enable_phase_training:
+            if len(self.key_metrics_history['tracking_lin_vel']) > 0:
+                avg_tracking_lin_vel = sum(self.key_metrics_history['tracking_lin_vel']) / len(self.key_metrics_history['tracking_lin_vel'])
+                avg_tracking_ang_vel = sum(self.key_metrics_history['tracking_ang_vel']) / len(self.key_metrics_history['tracking_ang_vel'])
+                avg_orientation = sum(self.key_metrics_history['orientation']) / len(self.key_metrics_history['orientation'])
+                avg_lin_vel_z = sum(self.key_metrics_history['lin_vel_z']) / len(self.key_metrics_history['lin_vel_z'])
+                avg_base_height = sum(self.key_metrics_history['base_height']) / len(self.key_metrics_history['base_height'])
+
+                # print(f"OnPolicyRunner-style averages: "
+                #     f"lin_vel={avg_tracking_lin_vel:.3f}, ang_vel={avg_tracking_ang_vel:.3f}, "
+                #     f"orientation={avg_orientation:.3f}, lin_vel_z={avg_lin_vel_z:.3f}, "
+                #     f"base_height={avg_base_height:.3f}")
+
+                # print(f"in_second_phase: {self.cfg.rewards.in_second_phase}")
+                
+                # calculate ratios to thresholds
+                lin_vel_ratio = abs(avg_tracking_lin_vel) / self.cfg.rewards.scales.tracking_lin_vel if self.cfg.rewards.scales.tracking_lin_vel > 0 else 0
+                ang_vel_ratio = abs(avg_tracking_ang_vel) / self.cfg.rewards.scales.tracking_ang_vel if self.cfg.rewards.scales.tracking_ang_vel > 0 else 0
+                orientation_ratio = abs(avg_orientation) / self.cfg.rewards.scales.orientation if self.cfg.rewards.scales.orientation > 0 else 0
+                lin_vel_z_ratio = abs(avg_lin_vel_z) / self.cfg.rewards.scales.lin_vel_z if self.cfg.rewards.scales.lin_vel_z > 0 else 0
+                base_height_ratio = abs(avg_base_height) / self.cfg.rewards.scales.base_height if self.cfg.rewards.scales.base_height > 0 else 0
+                
+                # check if all ratios exceed their respective thresholds to switch to phase 2
+                if not self.cfg.rewards.in_second_phase and (
+                    lin_vel_ratio >= self.cfg.rewards.threshold_tracking_lin_vel and
+                    ang_vel_ratio >= self.cfg.rewards.threshold_tracking_ang_vel and
+                    orientation_ratio >= self.cfg.rewards.threshold_orientation and
+                    lin_vel_z_ratio >= self.cfg.rewards.threshold_lin_vel_z and
+                    base_height_ratio >= self.cfg.rewards.threshold_base_height):
+                    
+                    self.cfg.rewards.in_second_phase = True
+                    print(f"Switching to Phase 2 based on OPR-style averages: "
+                        f"lin_vel={lin_vel_ratio:.3f}, ang_vel={ang_vel_ratio:.3f}, "
+                        f"orientation={orientation_ratio:.3f}, lin_vel_z={lin_vel_z_ratio:.3f}, "
+                        f"base_height={base_height_ratio:.3f}")
+
         # fill extras
         self.extras["episode"] = {}
         for key in self.episode_sums.keys():
@@ -262,12 +338,36 @@ class Tita(LeggedRobot):
             Calls each reward function which had a non-zero scale (processed in self._prepare_reward_function())
             adds each terms to the episode sums and to the total reward
         """
-        self.rew_buf[:] = 0.
-        for i in range(len(self.reward_functions)):
-            name = self.reward_names[i]
-            rew = self.reward_functions[i]() * self.reward_scales[name]
-            self.rew_buf += rew
-            self.episode_sums[name] += rew
+        if hasattr(self.cfg.rewards, 'enable_phase_training') and self.cfg.rewards.enable_phase_training:
+            # if phase training enabled, scale rewards differently based on the current phase
+            self.rew_buf[:] = 0
+            for i in range(len(self.reward_functions)):
+                name = self.reward_names[i]
+                
+                if self.cfg.rewards.in_second_phase:
+                    # phase 2: all rewards enabled with full scale
+                    if name in ["object_distance", "object_distance_l2", "object_orientation_distance", "object_orientation_distance_l2"]:
+                        rew = self.reward_functions[i]() * self.reward_scales[name] * 1.0
+                    else:
+                        rew = self.reward_functions[i]() * self.reward_scales[name] * 1.0
+                else:
+                    # phase 1: manipulation-related rewards are reduced to focus on locomotion
+                    if name in ["object_distance", "object_distance_l2", "object_orientation_distance", "object_orientation_distance_l2"]:
+                        rew = self.reward_functions[i]() * self.reward_scales[name] * 0.2
+                    else:
+                        rew = self.reward_functions[i]() * self.reward_scales[name]
+                
+                self.rew_buf += rew
+                self.episode_sums[name] += rew
+        else:
+            # not using phase training, compute rewards normally
+            self.rew_buf[:] = 0.
+            for i in range(len(self.reward_functions)):
+                name = self.reward_names[i]
+                rew = self.reward_functions[i]() * self.reward_scales[name]
+                self.rew_buf += rew
+                self.episode_sums[name] += rew
+
         if self.cfg.rewards.only_positive_rewards:
             self.rew_buf[:] = torch.clip(self.rew_buf[:], min=0.)
         # add termination reward after clipping
