@@ -370,7 +370,7 @@ class Tita(LeggedRobot):
         if self.cfg.control.arm_control_type == "position":
             props["driveMode"][self.arm_indices.cpu()].fill(gymapi.DOF_MODE_POS)
             props["stiffness"][self.arm_indices.cpu()].fill(self.cfg.control.arm_stiffness)
-            props["damping"][self.arm_indices.cpu()].fill(self.cfg.control.arm_stiffness)
+            props["damping"][self.arm_indices.cpu()].fill(self.cfg.control.arm_damping)
         if env_id==0:
             self.dof_pos_limits = torch.zeros(self.num_dof, 2, dtype=torch.float, device=self.device, requires_grad=False)
             self.dof_vel_limits = torch.zeros(self.num_dof, dtype=torch.float, device=self.device, requires_grad=False)
