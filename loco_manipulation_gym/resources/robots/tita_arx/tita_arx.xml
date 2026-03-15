@@ -1,0 +1,184 @@
+<mujoco model="tita_arx">
+  <compiler angle="radian" meshdir="meshes/"/>
+
+  <default>
+    <joint damping="0.001" armature="0.01" frictionloss="0.1"/>
+  </default>
+
+  <asset>
+      <!-- 腿部mesh -->
+      <mesh name="base_link" file="base_link.STL" />
+      <mesh name="left_leg_1" file="left_leg_1.STL" />
+      <mesh name="left_leg_2" file="left_leg_2.STL" />
+      <mesh name="left_leg_3" file="left_leg_3.STL" />
+      <mesh name="left_leg_4" file="left_leg_4.STL" />
+      <mesh name="right_leg_1" file="right_leg_1.STL" />
+      <mesh name="right_leg_2" file="right_leg_2.STL" />
+      <mesh name="right_leg_3" file="right_leg_3.STL" />
+      <mesh name="right_leg_4" file="right_leg_4.STL" />
+
+      <!-- 机械臂mesh -->
+      <mesh name="arm_base" file="arm_base.STL" />
+      <mesh name="link1" file="link1.STL" />
+      <mesh name="link2" file="link2.STL" />
+      <mesh name="link3" file="link3.STL" />
+      <mesh name="link4" file="link4.STL" />
+      <mesh name="link5" file="link5.STL" />
+      <mesh name="link6" file="link6.STL" />
+
+      <!-- material -->
+      <material name="black" rgba="0.196078 0.196078 0.196078 1"/>
+      <material name="blue" rgba="0.0 0.0 0.8 1"/>
+      <material name="green" rgba="0.0 0.8 0.0 1"/>
+      <material name="grey" rgba="0.2 0.2 0.2 1"/>
+      <material name="silver" rgba="0.913725 0.913725 0.847058 1"/>
+      <material name="orange" rgba="1.0 0.423529 0.039215 1"/>
+      <material name="brown" rgba="0.870588 0.811764 0.764705 1"/>
+      <material name="red" rgba="0.8 0.0 0.0 1"/>
+      <material name="white" rgba="1.0 1.0 1.0 1"/>
+      <material name="bright_yellow" rgba="1.0 1.0 0.0 1"/>
+      <material name="arm_grey" rgba="0.75294 0.75294 0.75294 1"/>
+      <material name="gripper_grey" rgba="0.89804 0.91765 0.92941 1"/>
+  </asset>
+
+  <worldbody>
+    <!-- base_link -->
+    <body name="base_link" pos="0 0 0.5">
+      <inertial pos="0.0153411 3.39203e-06 0.0170663" quat="0.517943 0.517873 -0.481627 0.481226" mass="17.7684" diaginertia="0.113021 0.107379 0.0536463"/>
+      <joint name="floating_base" type="free" limited="false" actuatorfrclimited="false"/>
+      <geom name="base_link_visual" type="mesh"
+        mesh="base_link" rgba="0.2 0.2 0.2 1"
+        contype="0" conaffinity="0"/>
+      <geom name="base_link_collision" pos="0 0 0.017"
+        type="box" rgba="0 0 0 0" size="0.235 0.15 0.095"
+        contype="1" conaffinity="1"/>
+      <geom name="right_leg_base_visual" type="mesh" pos="0 -0.0895 0" quat="0.707107 0.707107 0 0"
+        mesh="right_leg_1" material="black"
+        contype="0" conaffinity="0" group="2"/>
+      <geom name="left_leg_base_visual" type="mesh" pos="0 0.0895 0" quat="0.707107 0.707107 0 0"
+        mesh="left_leg_1" material="black"
+        contype="0" conaffinity="0" group="2"/>
+      <geom name="arm_base_visual" pos="0 0 0.1" quat="1 0 0 0" type="mesh"
+        mesh="arm_base" material="arm_grey"
+        contype="0" conaffinity="0" group="2"/>
+
+      <!-- left_thigh -->
+      <body name="left_thigh" pos="-5.23799e-07 0.2321 0" quat="0.499996 -0.500002 0.5 0.500002">
+        <inertial pos="0.021763 0.0019069 -0.027868" quat="-0.00931458 0.711777 0.0101084 0.702271" mass="3.0984" diaginertia="0.00883636 0.00648624 0.00297469"/>
+        <joint name="left_hip" pos="0 0 0" axis="0 0 1" range="-1.91986 3.49066"/>
+        <geom name="left_thigh_visual" type="mesh"
+          mesh="left_leg_2" material="bright_yellow"
+          contype="0" conaffinity="0" group="2"/>
+        <!-- left_shin -->
+        <body name="left_shin" pos="0.2 0 0">
+          <inertial pos="0.095348 0.011698 0.001838" quat="0.03753 0.692169 -0.047281 0.719207" mass="0.57244" diaginertia="0.00342536 0.00324384 0.000258551"/>
+          <joint name="left_knee" pos="0 0 0" axis="0 0 1" range="-2.67035 -0.698132"/>
+          <geom name="left_shin_visual" type="mesh"
+            mesh="left_leg_3" material="black"
+            contype="0" conaffinity="0" group="2"/>
+          <geom name="left_shin_collision" pos="0.1 0.021 -0.002" quat="0.997856 0 0 -0.0654532"
+            type="box" size="0.1 0.035 0.025" rgba="0 0 0 0"
+            contype="1" conaffinity="1"/>
+          <!-- left_wheel -->
+          <body name="left_wheel" pos="0.2 0 0.0514">
+            <inertial pos="-2.267e-06 -1.6471e-06 -0.00095616" quat="0.457615 0.539031 -0.457649 0.539066" mass="1.5094" diaginertia="0.0069049 0.00354775 0.00350415"/>
+            <joint name="left_ankle" pos="0 0 0" axis="0 0 1" range="-62831.8 62831.8"/>
+            <geom name="left_wheel_visual" type="mesh"
+              mesh="left_leg_4" material="orange"
+              contype="0" conaffinity="0" group="2"/>
+            <geom name="left_wheel_collision" size="0.0925 0.017"
+              type="cylinder" rgba="0 0 0 0"
+              contype="1" conaffinity="1"/>
+          </body>
+        </body>
+      </body>
+      
+      <!-- right_thigh -->
+      <body name="right_thigh" pos="5.23799e-07 -0.2321 0" quat="0.499996 -0.500002 0.5 0.500002">
+        <inertial pos="0.021763 0.0019065 0.027873" quat="-0.0101102 0.702272 0.00931581 0.711776" mass="3.0987" diaginertia="0.00883636 0.00648624 0.00297469"/>
+        <joint name="right_hip" pos="0 0 0" axis="0 0 1" range="-1.91986 3.49066"/>
+        <geom name="right_thigh_visual" type="mesh"
+          mesh="right_leg_2" rgba="1 1 0 1" 
+          contype="1" conaffinity="1" group="1"/>
+        <!-- right_shin -->
+        <body name="right_shin" pos="0.2 0 0">
+          <inertial pos="0.095348 0.011698 -0.001838" quat="0.047281 0.719207 -0.03753 0.692169" mass="0.57244" diaginertia="0.00342536 0.00324384 0.000258551"/>
+          <joint name="right_knee" pos="0 0 0" axis="0 0 1" range="-2.67035 -0.698132"/>
+          <geom name="right_shin_visual" type="mesh"
+            mesh="right_leg_3" material="black"
+            contype="0" conaffinity="0" group="2"/>
+          <geom name="right_shin_collision" pos="0.1 0.021 -0.002" quat="0.997856 0 0 -0.0654532"
+            type="box" rgba="0 0 0 0" size="0.1 0.035 0.025"
+            contype="1" conaffinity="1"/>
+          <!-- right_wheel -->
+          <body name="right_wheel" pos="0.2 0 -0.0514">
+            <inertial pos="-2.3798e-06 -1.5854e-06 0.00095595" quat="0.457221 0.539429 -0.457186 0.539395" mass="1.5094" diaginertia="0.0069047 0.00354767 0.00350403"/>
+            <joint name="right_ankle" pos="0 0 0" axis="0 0 1" range="-62831.8 62831.8"/>
+            <geom name="right_wheel_visual" type="mesh"
+              mesh="right_leg_4" material="orange"
+              contype="0" conaffinity="0" group="2"/>
+            <geom name="right_wheel_collision" 
+              type="cylinder" rgba="0 0 0 0" size="0.0925 0.017" 
+              contype="1" conaffinity="1"/>
+          </body>
+        </body>
+      </body>
+
+      <!-- arm_link01 -->
+      <body name="arm_link01" pos="0 0 0.1603">
+        <inertial pos="0.0060953 -0.0042968 0.017959" quat="0.680193 0.680193 -0.193229 0.193229" mass="0.060835" diaginertia="8.61803e-05 6.38197e-05 3e-05"/>
+        <joint name="arm_joint00" pos="0 0 0" axis="0 0 1" range="-10 10"/>
+        <geom type="mesh" rgba="0.75294 0.75294 0.75294 1" mesh="link1"/>
+        <!-- arm_link02 -->
+        <body name="arm_link02" pos="0.02 0 0.0402">
+          <inertial pos="-0.13238 0.0022038 0.00011179" quat="0 0.706195 0 0.708017" mass="1.0733" diaginertia="0.0160201 0.01596 0.000499897"/>
+          <joint name="arm_joint01" pos="0 0 0" axis="0 1 0" range="-10 10"/>
+          <geom type="mesh" rgba="0.75294 0.75294 0.75294 1" mesh="link2"/>
+          <!-- arm_link03 -->
+          <body name="arm_link03" pos="-0.264 0 0" quat="-3.67321e-06 -1 0 0">
+            <inertial pos="0.1872 -0.00030568 -0.051483" quat="0.269626 0.618013 0.251786 0.694238" mass="0.4994" diaginertia="0.00388848 0.00385541 0.000286113"/>
+            <joint name="arm_joint02" pos="0 0 0" axis="0 1 0" range="-10 10"/>
+            <geom type="mesh" rgba="0.75294 0.75294 0.75294 1" mesh="link3"/>
+            <!-- arm_link04 -->
+            <body name="arm_link04" pos="0.245 0 -0.056">
+              <inertial pos="0.038888 0.0029517 -0.035328" quat="0.913916 -0.0752199 0.315785 -0.243679" mass="0.080971" diaginertia="0.000184798 0.000152076 5.31251e-05"/>
+              <joint name="arm_joint03" pos="0 0 0" axis="0 1 0" range="-10 10"/>
+              <geom type="mesh" rgba="0.89804 0.91765 0.92941 1" mesh="link4"/>
+              <!-- arm_link05 -->
+              <body name="arm_link05" pos="0.06575 -0.001 -0.0825">
+                <inertial pos="0.0028996 3.1583e-05 0.052619" quat="0.998829 0 -0.0483866 0" mass="0.60236" diaginertia="0.000724856 0.00069 0.000205144"/>
+                <joint name="arm_joint04" pos="0 0 0" axis="0 0 1" range="-10 10"/>
+                <geom type="mesh" rgba="0.75294 0.75294 0.75294 1" mesh="link5"/>
+                <!-- gripper_link -->
+                <body name="gripper_link" pos="0.02845 0 0.0825" quat="0 -1 0 0">
+                  <inertial pos="0.044806 4.61632e-05 -0.000190937" mass="0.6" 
+                  fullinertia="0.00029 0.00028 0.00045 0.00000 0.00000 -0.00001"/>
+                  <!-- inertial quat="0.485149 0.514422 -0.514422 0.485149" -->
+                  <joint name="arm_joint05" pos="0 0 0" axis="1 0 0" range="-10 10"/>
+                  <geom type="mesh" rgba="0.89804 0.91765 0.92941 1" mesh="link6"/>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+    <actuator>
+    <motor name="left_hip_motor" joint="left_hip" ctrllimited="true" ctrlrange="-100 100"/>
+    <motor name="left_knee_motor" joint="left_knee" ctrllimited="true" ctrlrange="-100 100"/>
+    <motor name="left_ankle_motor" joint="left_ankle" ctrllimited="true" ctrlrange="-100 100"/>
+    
+    <motor name="right_hip_motor" joint="right_hip" ctrllimited="true" ctrlrange="-100 100"/>
+    <motor name="right_knee_motor" joint="right_knee" ctrllimited="true" ctrlrange="-100 100"/>
+    <motor name="right_ankle_motor" joint="right_ankle" ctrllimited="true" ctrlrange="-100 100"/>
+
+    <motor name="arm_joint00_motor" joint="arm_joint00" ctrllimited="true" ctrlrange="-100 100"/>
+    <motor name="arm_joint01_motor" joint="arm_joint01" ctrllimited="true" ctrlrange="-100 100"/>
+    <motor name="arm_joint02_motor" joint="arm_joint02" ctrllimited="true" ctrlrange="-100 100"/>
+    <motor name="arm_joint03_motor" joint="arm_joint03" ctrllimited="true" ctrlrange="-100 100"/>
+    <motor name="arm_joint04_motor" joint="arm_joint04" ctrllimited="true" ctrlrange="-100 100"/>
+    <motor name="arm_joint05_motor" joint="arm_joint05" ctrllimited="true" ctrlrange="-100 100"/>
+  </actuator>
+</mujoco>
